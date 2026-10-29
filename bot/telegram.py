@@ -35,7 +35,7 @@ def format_post(post: Post, channel: str) -> str:
     sources = list(dict.fromkeys(item.source for item in post.items))
     footer = [
         "📰 Kaynak: " + html.escape(", ".join(sources), quote=False),
-        f"{CATEGORY_TAGS.get(post.category, '#Dünya')} | {channel}",
+        CATEGORY_TAGS.get(post.category, "#Dünya") + (f" | {channel}" if channel else ""),
     ]
     head = f"{label} {html.escape(post.headline, quote=False)}"
     body = html.escape(post.body, quote=False)

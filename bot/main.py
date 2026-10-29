@@ -6,7 +6,8 @@ Kullanım:
 
 Ayarlar ortam değişkenlerinden ya da proje klasöründeki .env dosyasından okunur:
   TELEGRAM_BOT_TOKEN  BotFather'dan alınan anahtar
-  TELEGRAM_CHANNEL    kanal adı, örn. @krizmasasitr
+  TELEGRAM_CHANNEL    kanal adı (örn. @krizmasasitr) ya da sayısal kimliği; kanal_bul.bat ayarlar
+  CHANNEL_HANDLE      (isteğe bağlı) paylaşımların altında görünecek kanal adı
   OLLAMA_MODEL        (isteğe bağlı) varsayılan gemma3:12b
   OLLAMA_URL          (isteğe bağlı) varsayılan http://localhost:11434
   MAX_POSTS_PER_RUN   (isteğe bağlı) bir turda en fazla paylaşım, varsayılan 4
@@ -56,7 +57,8 @@ def load_env_file() -> None:
     path = os.path.join(ROOT, ".env")
     if not os.path.exists(path):
         return
-    with open(path, encoding="utf-8") as f:
+    # PowerShell .env dosyasını farklı bir kodlamayla kaydetmiş olabilir; okunamayan harfleri atla.
+    with open(path, encoding="utf-8", errors="replace") as f:
         for line in f:
             line = line.strip()
             if line and not line.startswith("#") and "=" in line:
@@ -77,6 +79,8 @@ def is_quiet_now() -> bool:
 def run_once() -> None:
     dry_run = os.environ.get("DRY_RUN") == "1"
     channel = os.environ.get("TELEGRAM_CHANNEL", "@krizmasasitr")
+    # Paylaşımların altında görünen kanal adı. Kanal sayısal kimlikle ayarlıysa CHANNEL_HANDLE'dan gelir.
+    handle = os.environ.get("CHANNEL_HANDLE") or (channel if channel.startswith("@") else "")
     max_posts = int(os.environ.get("MAX_POSTS_PER_RUN", "4"))
 
     now = time.time()
@@ -104,7 +108,7 @@ def run_once() -> None:
     silent = is_quiet_now()
     sent = 0
     for post in posts:
-        text = telegram.format_post(post, channel)
+        text = telegram.format_post(post, handle)
         image = next((i.image for i in post.items if i.image), "")
         if not image:
             image = next((img for i in post.items if (img := feeds.page_image(i.link))), "")

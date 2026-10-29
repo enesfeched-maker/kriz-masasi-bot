@@ -14,7 +14,7 @@ CAPTION_LIMIT = 1024
 
 
 def format_post(post: Post, channel: str) -> str:
-    """Kısa, kaynaksız kanal tarzı: "🔴 metin" ve altta kanal adı."""
+    """Kısa, kaynaksız kanal tarzı: yalnızca "🔴 metin". Kanal adı istenirse SIGNATURE ile eklenir."""
     # "İddia" yalnızca çatışma ve diplomasi haberlerinde anlamlı;
     # tek kaynaklı piyasa verisi ya da afet haberi iddia sayılmaz.
     prefix = "🔴 "
@@ -110,5 +110,6 @@ def format_summary(items: list[str], day, channel: str) -> str:
     for number, item in zip(NUMBERS, items):
         lines.append(f"{number} {html.escape(item, quote=False)}")
         lines.append("")
-    lines.append("#GününÖzeti" + (f" | {channel}" if channel else ""))
+    if channel:
+        lines.append(channel)
     return "\n".join(lines)

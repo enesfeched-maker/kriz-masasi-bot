@@ -8,7 +8,7 @@ Kullanım:
 Ayarlar ortam değişkenlerinden ya da proje klasöründeki .env dosyasından okunur:
   TELEGRAM_BOT_TOKEN  BotFather'dan alınan anahtar
   TELEGRAM_CHANNEL    kanal adı (örn. @krizmasasitr) ya da sayısal kimliği; kanal_bul.bat ayarlar
-  CHANNEL_HANDLE      (isteğe bağlı) paylaşımların altında görünecek kanal adı
+  SIGNATURE           (isteğe bağlı) paylaşımların altına yazılacak imza (örn. @krizmasasitr), varsayılan boş
   OLLAMA_MODEL        (isteğe bağlı) varsayılan gemma3:12b
   OLLAMA_URL          (isteğe bağlı) varsayılan http://localhost:11434
   MAX_POSTS_PER_RUN   (isteğe bağlı) bir turda en fazla paylaşım, varsayılan 4
@@ -118,8 +118,8 @@ def maybe_send_summary(state: dict, handle: str, channel: str, dry_run: bool) ->
 def run_once() -> None:
     dry_run = os.environ.get("DRY_RUN") == "1"
     channel = os.environ.get("TELEGRAM_CHANNEL", "@krizmasasitr")
-    # Paylaşımların altında görünen kanal adı. Kanal sayısal kimlikle ayarlıysa CHANNEL_HANDLE'dan gelir.
-    handle = os.environ.get("CHANNEL_HANDLE") or (channel if channel.startswith("@") else "")
+    # Paylaşımların altına kanal adı yazılmaz; istenirse .env'de SIGNATURE ile açılır.
+    handle = os.environ.get("SIGNATURE", "")
     max_posts = int(os.environ.get("MAX_POSTS_PER_RUN", "4"))
 
     now = time.time()

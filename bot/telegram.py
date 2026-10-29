@@ -20,7 +20,9 @@ CATEGORY_TAGS = {
 
 
 def format_post(post: Post, channel: str) -> str:
-    if not post.verified:
+    # "İddia" etiketi yalnızca çatışma ve diplomasi haberlerinde anlamlı;
+    # tek kaynaklı piyasa verisi ya da afet haberi iddia sayılmaz.
+    if not post.verified and post.category in ("savas", "diplomasi"):
         label = "⚠️ <b>İDDİA</b>"
     elif post.breaking:
         label = "🔴 <b>SON DAKİKA</b>"
@@ -35,9 +37,9 @@ def format_post(post: Post, channel: str) -> str:
         links.append(f'<a href="{html.escape(item.link, quote=True)}">{html.escape(item.source)}</a>')
 
     lines = [
-        f"{label} {html.escape(post.headline)}",
+        f"{label} {html.escape(post.headline, quote=False)}",
         "",
-        html.escape(post.body),
+        html.escape(post.body, quote=False),
         "",
         "🔗 " + " · ".join(links),
         f"{CATEGORY_TAGS.get(post.category, '#Dünya')} | {channel}",

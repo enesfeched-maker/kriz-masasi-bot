@@ -134,3 +134,38 @@ def write_posts(items: list[Item], recent_headlines: list[str], max_posts: int) 
                           bool(p.get("breaking")), linked))
     log.info("%s, %d haberden %d paylaşım yazdı", MODEL, len(items), len(posts))
     return posts
+
+
+SUMMARY_SYSTEM = """Sen "Kriz Masası" adlı Türkçe Telegram haber kanalının editörüsün.
+Sana kanalda bugün paylaşılan haberleri vereceğim. Bunlardan günün en önemli 5 olayını seç
+ve her biri için tek cümlelik, en fazla 25 kelimelik Türkçe bir özet yaz.
+Aynı olayı anlatan paylaşımları tek madde say. Yalnızca verilen haberlerdeki bilgileri kullan.
+Tarafsız ve sakin bir dil kullan. En önemli olay ilk sırada olsun."""
+
+SUMMARY_SCHEMA = {
+    "type": "object",
+    "properties": {"items": {"type": "array", "items": {"type": "string"}}},
+    "required": ["items"],
+    "additionalProperties": False,
+}
+
+
+def write_daily_summary(posts_today: list[dict]) -> list[str]:
+    """Bugün paylaşılanlardan günün en önemli 5 olayını tek cümlelik maddeler halinde döner."""
+    news = "\n".join(f"- {p['h']}: {p.get('b', '')}" for p in posts_today)
+    data = _chat({
+        "model": MODEL,
+        "stream": False,
+        "format": SUMMARY_SCHEMA,
+        "options": {"temperature": 0.2, "num_ctx": 8192},
+        "messages": [
+            {"role": "system", "content": SUMMARY_SYSTEM},
+            {"role": "user", "content": f"Bugün paylaşılan haberler:\n{news}"},
+        ],
+    })
+    try:
+        items = json.loads(data["message"]["content"])["items"]
+    except (KeyError, ValueError) as exc:
+        log.warning("Model geçersiz özet verdi: %s", exc)
+        return []
+    return [i.strip() for i in items if isinstance(i, str) and i.strip()][:5]

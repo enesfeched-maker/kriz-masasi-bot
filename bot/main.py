@@ -3,6 +3,7 @@
 Kullanım:
   python -m bot.main          tek tur çalışır
   python -m bot.main --loop   bilgisayar açık kaldıkça her 10 dakikada bir tur atar
+  python -m bot.tray          aynısını pencere açmadan, saat yanındaki K simgesiyle yapar
 
 Ayarlar ortam değişkenlerinden ya da proje klasöründeki .env dosyasından okunur:
   TELEGRAM_BOT_TOKEN  BotFather'dan alınan anahtar
@@ -13,6 +14,9 @@ Ayarlar ortam değişkenlerinden ya da proje klasöründeki .env dosyasından ok
   MAX_POSTS_PER_RUN   (isteğe bağlı) bir turda en fazla paylaşım, varsayılan 4
   INTERVAL_MINUTES    (isteğe bağlı) --loop modunda turlar arası süre, varsayılan 10
   QUIET_HOURS         (isteğe bağlı) bildirimsiz paylaşım saatleri, varsayılan 0-8; kapatmak için boş bırak
+  DAILY_MAX_POSTS     (isteğe bağlı) günde en fazla paylaşım, varsayılan 40
+  HOURLY_MAX_POSTS    (isteğe bağlı) saatte en fazla paylaşım, varsayılan 3
+  SUMMARY_HOUR        (isteğe bağlı) günün özetinin gideceği saat, varsayılan 21; kapatmak için boş bırak
   DRY_RUN=1           kanala göndermek yerine paylaşımları ekrana yazar
 """
 
@@ -76,6 +80,41 @@ def is_quiet_now() -> bool:
     return start <= hour < end if start <= end else hour >= start or hour < end
 
 
+def start_of_today() -> float:
+    today = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    return today.timestamp()
+
+
+def post_budget(recent: list[dict], now: float) -> int:
+    """Günlük ve saatlik sınırlara göre bu turda en fazla kaç paylaşım yapılabileceği."""
+    daily = int(os.environ.get("DAILY_MAX_POSTS", "40"))
+    hourly = int(os.environ.get("HOURLY_MAX_POSTS", "3"))
+    today = sum(1 for r in recent if r["t"] >= start_of_today())
+    last_hour = sum(1 for r in recent if now - r["t"] < 3600)
+    return max(0, min(daily - today, hourly - last_hour))
+
+
+def maybe_send_summary(state: dict, handle: str, channel: str, dry_run: bool) -> None:
+    """Belirlenen saatten sonra, o gün henüz gönderilmediyse günün özetini paylaşır."""
+    hour = os.environ.get("SUMMARY_HOUR", "21").strip()
+    now = datetime.datetime.now()
+    if not hour or now.hour < int(hour) or state.get("summary_date") == now.date().isoformat():
+        return
+    today = [r for r in state.get("recent", []) if r["t"] >= start_of_today()]
+    if len(today) < 3:
+        return  # özetlenecek kadar haber yok
+    items = editor.write_daily_summary(today)
+    if not items:
+        return
+    text = telegram.format_summary(items, now.date(), handle)
+    if dry_run:
+        print("-" * 40 + "\n" + text)
+    else:
+        telegram.send(os.environ["TELEGRAM_BOT_TOKEN"], channel, text, silent=is_quiet_now())
+    state["summary_date"] = now.date().isoformat()
+    log.info("Günün özeti paylaşıldı (%d madde).", len(items))
+
+
 def run_once() -> None:
     dry_run = os.environ.get("DRY_RUN") == "1"
     channel = os.environ.get("TELEGRAM_CHANNEL", "@krizmasasitr")
@@ -101,9 +140,14 @@ def run_once() -> None:
     else:
         new_items_to_post = new_items[:MAX_ITEMS_PER_RUN]
 
+    budget = min(max_posts, post_budget(recent, now))
+    if new_items_to_post and budget == 0:
+        log.info("Paylaşım sınırına ulaşıldı (günde %s, saatte %s), bu tur paylaşım yok.",
+                 os.environ.get("DAILY_MAX_POSTS", "40"), os.environ.get("HOURLY_MAX_POSTS", "3"))
+
     posts = []
-    if new_items_to_post:
-        posts = editor.write_posts(new_items_to_post, [r["h"] for r in recent], max_posts)
+    if new_items_to_post and budget:
+        posts = editor.write_posts(new_items_to_post, [r["h"] for r in recent], budget)
 
     silent = is_quiet_now()
     sent = 0
@@ -122,7 +166,7 @@ def run_once() -> None:
                 continue
             time.sleep(3)
         sent += 1
-        recent.append({"t": now, "h": post.headline})
+        recent.append({"t": now, "h": post.headline, "b": post.body[:300]})
 
     if posts and not sent and not dry_run:
         # Hiçbiri gitmediyse haberleri görüldü sayma, bir sonraki turda yeniden denensin.
@@ -130,12 +174,21 @@ def run_once() -> None:
 
     for item in new_items:
         seen[item.id] = now
+    state.update({"seen": seen, "recent": recent, "failed_sources": failed})
     if not dry_run:
-        save_state({"seen": seen, "recent": recent, "failed_sources": failed})
+        save_state(state)
     log.info("Tur bitti: %d paylaşım%s.", sent, " (gece modu, bildirimsiz)" if silent and sent else "")
 
+    try:
+        maybe_send_summary(state, handle, channel, dry_run)
+        if not dry_run:
+            save_state(state)
+    except Exception:  # özet gitmezse bir sonraki turda yeniden denenir
+        log.exception("Günün özeti gönderilemedi")
 
-def main() -> int:
+
+def setup() -> int:
+    """Kayıtları ve ayarları hazırlar. Sorun yoksa 0, ayar hatası varsa 2 döner."""
     os.makedirs(os.path.join(ROOT, "logs"), exist_ok=True)
     file_log = logging.handlers.RotatingFileHandler(
         os.path.join(ROOT, "logs", "bot.log"), maxBytes=1_000_000, backupCount=3, encoding="utf-8")
@@ -146,18 +199,35 @@ def main() -> int:
     load_env_file()
     if os.environ.get("DRY_RUN") != "1" and not os.environ.get("TELEGRAM_BOT_TOKEN"):
         log.error(".env dosyasında TELEGRAM_BOT_TOKEN yok. Anahtarı ekleyip botu yeniden başlat.")
-        return 2  # baslat.bat bu kodu görünce yeniden denemez, durur
+        return 2
+    return 0
+
+
+def loop(on_status=None, stop=None) -> None:
+    """Her INTERVAL_MINUTES dakikada bir tur atar. on_status(ok, mesaj) her turdan sonra çağrılır."""
+    interval = float(os.environ.get("INTERVAL_MINUTES", "10")) * 60
+    while not (stop and stop.is_set()):
+        try:
+            run_once()
+            if on_status:
+                on_status(True, "Son tur " + datetime.datetime.now().strftime("%H:%M") + " başarılı")
+        except Exception as exc:  # internet ya da model geçici olarak çökerse bot durmasın
+            log.exception("Tur hata verdi, bir sonraki turda tekrar denenecek")
+            if on_status:
+                on_status(False, f"Hata: {exc}"[:120])
+        if stop:
+            stop.wait(interval)
+        else:
+            time.sleep(interval)
+
+
+def main() -> int:
+    if code := setup():
+        return code  # baslat.bat 2 kodunu görünce yeniden denemez, durur
     if "--loop" not in sys.argv:
         run_once()
         return 0
-
-    interval = float(os.environ.get("INTERVAL_MINUTES", "10")) * 60
-    while True:
-        try:
-            run_once()
-        except Exception:  # internet ya da model geçici olarak çökerse bot durmasın
-            log.exception("Tur hata verdi, bir sonraki turda tekrar denenecek")
-        time.sleep(interval)
+    loop()
 
 
 if __name__ == "__main__":

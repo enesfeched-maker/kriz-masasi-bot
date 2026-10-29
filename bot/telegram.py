@@ -85,3 +85,17 @@ def send(token: str, chat_id: str, text: str, image_url: str = "", silent: bool 
         "link_preview_options": {"is_disabled": True}, "disable_notification": silent})
     if not resp.ok:
         raise RuntimeError(f"Telegram hatası {resp.status_code}: {resp.text}")
+
+
+MONTHS = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz",
+          "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"]
+NUMBERS = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"]
+
+
+def format_summary(items: list[str], day, channel: str) -> str:
+    lines = [f"📋 <b>GÜNÜN ÖZETİ</b> | {day.day} {MONTHS[day.month - 1]} {day.year}", ""]
+    for number, item in zip(NUMBERS, items):
+        lines.append(f"{number} {html.escape(item, quote=False)}")
+        lines.append("")
+    lines.append("#GününÖzeti" + (f" | {channel}" if channel else ""))
+    return "\n".join(lines)

@@ -36,16 +36,24 @@ haberleri görüldü olarak işaretler. Paylaşımlar ikinci turdan itibaren ba�
 4. **Ayarlar:** Klasördeki `.env.example` dosyasının bir kopyasını `.env` adıyla oluştur,
    Not Defteri ile aç ve BotFather'ın verdiği anahtarı `TELEGRAM_BOT_TOKEN=` satırına yaz.
 5. **Kanal:** Botu kanala **yönetici** olarak ekle ve "Mesaj gönderme" iznini ver.
-6. **Başlat:** `baslat.bat` dosyasına çift tıkla. İlk açılışta gerekli paketleri kurar,
-   sonra çalışmaya başlar. Pencere açık kaldıkça bot çalışır.
+6. **Kanalı bağla:** Kanala herhangi bir mesaj yaz, sonra `kanal_bul.bat` dosyasına çift tıkla.
+   Bot, yönetici olduğu kanalı bulup `.env` dosyasına yazar.
+7. **Başlat:** `baslat.bat` dosyasına çift tıkla. Gerekli paketleri kurar, sonra bot arka planda
+   çalışmaya başlar. Saatin yanındaki gizli simgeler arasında bir **K** simgesi belirir:
+   - 🟢 yeşil: bot çalışıyor, son tur başarılı
+   - 🔴 kırmızı: son turda hata var (simgeye sağ tıklayıp **Kayıtları aç** ile nedenini gör)
+   - ⚪ gri: bot yeni başladı, ilk tur sürüyor
+
+   Botu kapatmak için simgeye sağ tıklayıp **Botu kapat**'ı seç. Hata ararken botu pencereli
+   görmek istersen `pencereli_baslat.bat` dosyasını kullan.
 
 **Bilgisayar uykuya geçerse bot durur.** *Ayarlar → Sistem → Güç* bölümünde, prize takılıyken
 ekranın kapanmasına izin ver ama "uyku" süresini **Hiçbir zaman** yap. Dizüstü bilgisayarda
 kapak kapatıldığında ne olacağını da *Denetim Masası → Güç Seçenekleri → Kapağı kapatmanın
 yapacağı işlemi seçin* bölümünden **Hiçbir şey yapma** olarak ayarla.
 
-Bot beklenmedik şekilde kapanırsa `baslat.bat` 30 saniye sonra onu yeniden başlatır. Botun
-geçmiş kayıtları `logs/bot.log` dosyasında durur.
+Bir tur hata verirse bot durmaz, 10 dakika sonra yeniden dener. Botun geçmiş kayıtları
+`logs/bot.log` dosyasında durur.
 
 **Bilgisayar açıldığında kendiliğinden başlasın istersen:** `Win + R` → `shell:startup`
 yaz → açılan klasöre `baslat.bat` için bir kısayol koy.
@@ -68,7 +76,10 @@ Modeli değiştirdiysen önce `ollama pull <model adı>` ile indirmeyi unutma.
 - **Kaynak eklemek ya da çıkarmak:** `sources.yaml` dosyasını düzenle.
 - **`.env` içindeki diğer ayarlar:** `MAX_POSTS_PER_RUN` (bir turda en fazla paylaşım,
   varsayılan 4), `INTERVAL_MINUTES` (turlar arası dakika, varsayılan 10), `QUIET_HOURS`
-  (bildirim sesi olmadan paylaşılan saatler, varsayılan `0-8`; kapatmak için boş bırak).
+  (bildirim sesi olmadan paylaşılan saatler, varsayılan `0-8`; kapatmak için boş bırak),
+  `DAILY_MAX_POSTS` ve `HOURLY_MAX_POSTS` (günde ve saatte en fazla paylaşım, varsayılan 40 ve 3),
+  `SUMMARY_HOUR` (günün en önemli 5 olayının paylaşıldığı saat, varsayılan 21; kapatmak için
+  boş bırak).
 - **Çalışmayan kaynaklar:** Pencerede her turda listelenir, ayrıca `state/state.json`
   içindeki `failed_sources` alanına yazılır.
 - **Deneme:** `.env` dosyasına `DRY_RUN=1` eklersen bot kanala göndermez, paylaşımları

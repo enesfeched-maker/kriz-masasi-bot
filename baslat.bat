@@ -1,18 +1,7 @@
 @echo off
-REM Kriz Masasi botunu baslatir. Ilk calistirmada gerekli paketleri kurar.
-REM Bot beklenmedik sekilde kapanirsa 30 saniye sonra kendini yeniden baslatir.
+REM Kriz Masasi botunu arka planda baslatir. Saat yanindaki K simgesinden takip edilir.
+REM Gerekli paketleri kurar ya da gunceller, sonra bu pencere kapanir.
 cd /d "%~dp0"
-if not exist .venv (
-    python -m venv .venv
-    .venv\Scripts\pip install -r requirements.txt
-)
-:basla
-.venv\Scripts\python -m bot.main --loop
-if %errorlevel%==2 (
-    echo Ayar hatasi var, yukaridaki mesaja bak.
-    pause
-    exit /b 1
-)
-echo Bot kapandi, 30 saniye sonra yeniden baslatiliyor...
-timeout /t 30 /nobreak >nul
-goto basla
+if not exist .venv python -m venv .venv
+.venv\Scripts\python -m pip install -q -r requirements.txt
+start "" .venv\Scripts\pythonw.exe -m bot.tray

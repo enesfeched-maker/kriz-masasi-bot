@@ -10,41 +10,27 @@ from bot.editor import Post
 
 log = logging.getLogger(__name__)
 
-CATEGORY_TAGS = {
-    "savas": "#Savaş",
-    "diplomasi": "#Diplomasi",
-    "ekonomi": "#Ekonomi",
-    "afet": "#Afet",
-    "diger": "#Dünya",
-}
-
-
 CAPTION_LIMIT = 1024
 
 
 def format_post(post: Post, channel: str) -> str:
-    # "İddia" etiketi yalnızca çatışma ve diplomasi haberlerinde anlamlı;
+    """Kısa, kaynaksız kanal tarzı: "🔴 metin" ve altta kanal adı."""
+    # "İddia" yalnızca çatışma ve diplomasi haberlerinde anlamlı;
     # tek kaynaklı piyasa verisi ya da afet haberi iddia sayılmaz.
+    prefix = "🔴 "
     if not post.verified and post.category in ("savas", "diplomasi"):
-        label = "⚠️ <b>İDDİA</b>"
+        prefix += "<b>İddia:</b> "
     elif post.breaking:
-        label = "🔴 <b>SON DAKİKA</b>"
-    else:
-        label = "🌍"
+        prefix += "<b>SON DAKİKA:</b> "
 
-    sources = list(dict.fromkeys(item.source for item in post.items))
-    footer = [
-        "📰 Kaynak: " + html.escape(", ".join(sources), quote=False),
-        CATEGORY_TAGS.get(post.category, "#Dünya") + (f" | {channel}" if channel else ""),
-    ]
-    head = f"{label} {html.escape(post.headline, quote=False)}"
+    footer = f"\n\n{channel}" if channel else ""
     body = html.escape(post.body, quote=False)
 
     # Fotoğraflı mesajlarda Telegram en fazla 1024 karakter kabul eder.
-    room = CAPTION_LIMIT - len(head) - len("\n".join(footer)) - 6
+    room = CAPTION_LIMIT - len(prefix) - len(footer)
     if len(body) > room:
         body = body[:room].rsplit(" ", 1)[0] + "…"
-    return "\n".join([head, "", body, "", *footer])
+    return prefix + body + footer
 
 
 def _call(token: str, method: str, **kwargs) -> requests.Response:

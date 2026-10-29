@@ -13,10 +13,9 @@ Bot bilgisayarın açık kaldıkça her 10 dakikada bir tur atar. Her turda:
 2. Yeni haberleri yerel modele verir. Model konu dışı haberleri eler, aynı olayı anlatan
    haberleri birleştirir, son 48 saatte paylaşılmış olayları tekrarlamaz ve en önemli
    birkaç olay için kısa Türkçe paylaşımlar yazar.
-3. Paylaşımları haberin fotoğrafıyla (varsa) ve kaynak adıyla kanala gönderir:
-   - 🔴 **SON DAKİKA**: birinci grup bir kaynaktan ya da iki farklı kaynaktan gelen acil haber
-   - 🌍 doğrulanmış diğer haberler
-   - ⚠️ **İDDİA**: tek bir ikinci grup kaynağa dayanan haber
+3. Paylaşımları haberin fotoğrafıyla (varsa) kanala gönderir. Paylaşımlar kısa ve kaynaksızdır:
+   `🔴` ile başlayan 1-2 cümle, altta kanal adı. Acil haberlerde `🔴 SON DAKİKA:`, tek bir ikinci
+   grup kaynağa dayanan çatışma ve diplomasi haberlerinde `🔴 İddia:` yazar.
 4. Görülen haberleri `state/state.json` dosyasına kaydeder ki aynı haber iki kez gitmesin.
 
 İlk turda eski haberleri kanala yığmamak için hiçbir şey paylaşmaz, yalnızca mevcut

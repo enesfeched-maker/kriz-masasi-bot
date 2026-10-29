@@ -27,11 +27,14 @@ Görevin:
 3. Kanalda zaten paylaşılmış bir olayı, ciddi yeni bir gelişme yoksa tekrar paylaşma.
 4. Önem sırasına göre en fazla {max_posts} paylaşım seç. Önemli bir şey yoksa boş liste dön.
 5. Her paylaşım için Türkçe yaz:
-   - headline: en fazla 12 kelimelik, net bir başlık.
-   - body: 2-3 cümlelik özet. Kaynak metni kopyalama, kendi cümlelerinle yaz.
+   - headline: olayı anlatan en fazla 8 kelimelik kısa not (kanalda görünmez, tekrar kontrolü için).
+   - body: kanalda görünecek paylaşım. Kısa ve vurucu: 1-2 cümle, en fazla 250 karakter.
+     Doğrudan olayla başla, giriş cümlesi kurma. Bir liderin ya da yetkilinin sözüyse
+     "Putin: '...'" ya da "İran Dışişleri: ..." biçiminde, konuşanın adıyla başla.
+     Kaynak metni kopyalama, kendi cümlelerinle yaz.
      Yalnızca kaynaklarda geçen bilgileri kullan, tahmin ekleme.
-     İddiaları sahibine bağla ("... açıkladı", "...'e göre").
-     Tarafsız ve sakin bir dil kullan; abartılı ifade, ünlem, yorum yok.
+     Haber sitesinin ya da ajansın adını yazma.
+     Tarafsız dil kullan; ünlem, yorum yok.
    - category: savas, diplomasi, ekonomi, afet, diger seçeneklerinden biri.
    - breaking: dakikalar içinde yaşanan, büyük bir olaysa true.
    - item_ids: paylaşımın dayandığı haberlerin numaraları. Yalnızca tam olarak bu olayı

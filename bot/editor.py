@@ -1,17 +1,18 @@
-"""Yeni haberleri Claude'a verip kanala gidecek Türkçe paylaşımları yazdırır."""
+"""Yeni haberleri yerel modele (Ollama) verip kanala gidecek Türkçe paylaşımları yazdırır."""
 
 import json
 import logging
 import os
 from dataclasses import dataclass
 
-import anthropic
+import requests
 
 from bot.feeds import Item
 
 log = logging.getLogger(__name__)
 
-MODEL = os.environ.get("CLAUDE_MODEL") or "claude-opus-5-5"
+OLLAMA_URL = os.environ.get("OLLAMA_URL") or "http://localhost:11434"
+MODEL = os.environ.get("OLLAMA_MODEL") or "gemma3:12b"
 
 SYSTEM = """Sen "Kriz Masası" adlı Türkçe Telegram haber kanalının editörüsün.
 Kanal dünyadaki krizleri takip eder: savaşlar ve çatışmalar, askeri gelişmeler,
@@ -88,31 +89,36 @@ def build_prompt(items: list[Item], recent_headlines: list[str]) -> str:
 
 
 def write_posts(items: list[Item], recent_headlines: list[str], max_posts: int) -> list[Post]:
-    client = anthropic.Anthropic()
-    response = client.beta.messages.create(
-        model=MODEL,
-        max_tokens=16000,
-        betas=["server-side-fallback-2026-07-01"],
-        fallbacks="default",
-        output_config={
-            "effort": "low",
-            "format": {"type": "json_schema", "schema": POST_SCHEMA},
+    resp = requests.post(
+        f"{OLLAMA_URL}/api/chat",
+        json={
+            "model": MODEL,
+            "stream": False,
+            "format": POST_SCHEMA,
+            "options": {"temperature": 0.2, "num_ctx": 16384},
+            "messages": [
+                {"role": "system", "content": SYSTEM.format(max_posts=max_posts)},
+                {"role": "user", "content": build_prompt(items, recent_headlines)},
+            ],
         },
-        system=SYSTEM.format(max_posts=max_posts),
-        messages=[{"role": "user", "content": build_prompt(items, recent_headlines)}],
+        timeout=600,
     )
-    if response.stop_reason != "end_turn":
-        log.warning("Claude yanıtı tamamlanmadı: %s", response.stop_reason)
+    resp.raise_for_status()
+    data = resp.json()
+
+    try:
+        raw_posts = json.loads(data["message"]["content"])["posts"]
+    except (KeyError, ValueError) as exc:
+        log.warning("Model geçersiz yanıt verdi: %s", exc)
         return []
 
-    text = next(b.text for b in response.content if b.type == "text")
     by_id = {i.id: i for i in items}
     posts = []
-    for p in json.loads(text)["posts"][:max_posts]:
-        linked = [by_id[i] for i in p["item_ids"] if i in by_id]
-        if not linked:
-            continue
-        posts.append(Post(p["headline"], p["body"], p["category"], p["breaking"], linked))
-    log.info("Claude %d haberden %d paylaşım yazdı (%s girdi, %s çıktı token)",
-             len(items), len(posts), response.usage.input_tokens, response.usage.output_tokens)
+    for p in raw_posts[:max_posts]:
+        linked = [by_id[i] for i in p.get("item_ids", []) if i in by_id]
+        if not linked or not p.get("headline") or not p.get("body"):
+            continue  # kaynağı olmayan paylaşım uydurma olabilir, gönderme
+        posts.append(Post(p["headline"], p["body"], p.get("category", "diger"),
+                          bool(p.get("breaking")), linked))
+    log.info("%s, %d haberden %d paylaşım yazdı", MODEL, len(items), len(posts))
     return posts

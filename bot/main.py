@@ -1,13 +1,16 @@
 """Kriz Masası botu: kaynakları tara, yeni krizleri özetle, kanala gönder.
 
-Her çalıştırmada bir tur yapar. GitHub Actions bunu birkaç dakikada bir çalıştırır.
+Kullanım:
+  python -m bot.main          tek tur çalışır
+  python -m bot.main --loop   bilgisayar açık kaldıkça her 10 dakikada bir tur atar
 
-Ortam değişkenleri:
+Ayarlar ortam değişkenlerinden ya da proje klasöründeki .env dosyasından okunur:
   TELEGRAM_BOT_TOKEN  BotFather'dan alınan anahtar
   TELEGRAM_CHANNEL    kanal adı, örn. @krizmasasi
-  ANTHROPIC_API_KEY   Claude API anahtarı
-  CLAUDE_MODEL        (isteğe bağlı) varsayılan claude-opus-5-5
+  OLLAMA_MODEL        (isteğe bağlı) varsayılan gemma3:12b
+  OLLAMA_URL          (isteğe bağlı) varsayılan http://localhost:11434
   MAX_POSTS_PER_RUN   (isteğe bağlı) bir turda en fazla paylaşım, varsayılan 4
+  INTERVAL_MINUTES    (isteğe bağlı) --loop modunda turlar arası süre, varsayılan 10
   DRY_RUN=1           kanala göndermek yerine paylaşımları ekrana yazar
 """
 
@@ -26,7 +29,7 @@ STATE_PATH = os.path.join(ROOT, "state", "state.json")
 MAX_AGE_HOURS = 6         # bundan eski haberlere bakma
 SEEN_TTL = 7 * 24 * 3600  # görülen haber kimliklerini bu kadar sakla
 RECENT_TTL = 48 * 3600    # son paylaşımları tekrar önlemek için bu kadar sakla
-MAX_ITEMS_PER_RUN = 80    # Claude'a bir turda verilecek en fazla haber
+MAX_ITEMS_PER_RUN = 40    # modele bir turda verilecek en fazla haber
 
 log = logging.getLogger("krizmasasi")
 
@@ -45,8 +48,20 @@ def save_state(state: dict) -> None:
         json.dump(state, f, ensure_ascii=False, indent=1, sort_keys=True)
 
 
-def main() -> int:
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+def load_env_file() -> None:
+    """Proje klasöründeki .env dosyasını okur (KEY=değer satırları)."""
+    path = os.path.join(ROOT, ".env")
+    if not os.path.exists(path):
+        return
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                key, value = line.split("=", 1)
+                os.environ.setdefault(key.strip(), value.strip().strip('"'))
+
+
+def run_once() -> None:
     dry_run = os.environ.get("DRY_RUN") == "1"
     channel = os.environ.get("TELEGRAM_CHANNEL", "@krizmasasi")
     max_posts = int(os.environ.get("MAX_POSTS_PER_RUN", "4"))
@@ -62,7 +77,7 @@ def main() -> int:
     log.info("%d haber okundu, %d yeni. Çalışmayan kaynaklar: %s",
              len(items), len(new_items), ", ".join(failed) or "yok")
 
-    if first_run:
+    if first_run and not dry_run:
         # İlk turda eski haberleri kanala yığmamak için hepsini görüldü say.
         log.info("İlk çalıştırma: mevcut haberler görüldü olarak işaretlendi, paylaşım yapılmadı.")
         new_items_to_post = []
@@ -87,7 +102,23 @@ def main() -> int:
     if not dry_run:
         save_state({"seen": seen, "recent": recent, "failed_sources": failed})
     log.info("Tur bitti: %d paylaşım.", len(posts))
-    return 0
+
+
+def main() -> int:
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s",
+                        datefmt="%H:%M")
+    load_env_file()
+    if "--loop" not in sys.argv:
+        run_once()
+        return 0
+
+    interval = float(os.environ.get("INTERVAL_MINUTES", "10")) * 60
+    while True:
+        try:
+            run_once()
+        except Exception:  # internet ya da model geçici olarak çökerse bot durmasın
+            log.exception("Tur hata verdi, bir sonraki turda tekrar denenecek")
+        time.sleep(interval)
 
 
 if __name__ == "__main__":

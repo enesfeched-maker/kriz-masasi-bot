@@ -95,7 +95,7 @@ def write_posts(items: list[Item], recent_headlines: list[str], max_posts: int) 
             "model": MODEL,
             "stream": False,
             "format": POST_SCHEMA,
-            "options": {"temperature": 0.2, "num_ctx": 16384},
+            "options": {"temperature": 0.2, "num_ctx": 8192},
             "messages": [
                 {"role": "system", "content": SYSTEM.format(max_posts=max_posts)},
                 {"role": "user", "content": build_prompt(items, recent_headlines)},

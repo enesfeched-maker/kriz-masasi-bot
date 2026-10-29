@@ -29,7 +29,7 @@ STATE_PATH = os.path.join(ROOT, "state", "state.json")
 MAX_AGE_HOURS = 6         # bundan eski haberlere bakma
 SEEN_TTL = 7 * 24 * 3600  # görülen haber kimliklerini bu kadar sakla
 RECENT_TTL = 48 * 3600    # son paylaşımları tekrar önlemek için bu kadar sakla
-MAX_ITEMS_PER_RUN = 40    # modele bir turda verilecek en fazla haber
+MAX_ITEMS_PER_RUN = 30    # modele bir turda verilecek en fazla haber
 
 log = logging.getLogger("krizmasasi")
 

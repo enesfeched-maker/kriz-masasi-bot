@@ -49,8 +49,8 @@ Model ne kadar büyükse Türkçesi ve haber seçimi o kadar iyi olur ama bilgis
 
 | Bilgisayar | Önerilen model |
 |---|---|
-| 8 GB ya da daha fazla ekran kartı belleği (VRAM) | `gemma3:12b` (varsayılan) |
-| Ekran kartı zayıf ya da yok, 16 GB RAM | `gemma3:4b` |
+| 6 GB ya da daha fazla ekran kartı belleği (VRAM), 16 GB RAM | `gemma3:12b` (varsayılan). 6-8 GB VRAM'de model kısmen işlemcide çalışır, bir tur birkaç dakika sürer. 10 dakikalık aralık için yeterli. |
+| Ekran kartı zayıf ya da yok | `gemma3:4b` (daha hızlı, Türkçesi biraz daha zayıf) |
 | 16 GB ya da daha fazla VRAM | `gemma3:27b` |
 
 Modeli değiştirdiysen önce `ollama pull <model adı>` ile indirmeyi unutma.

@@ -58,19 +58,21 @@ def _call(token: str, method: str, **kwargs) -> requests.Response:
     raise RuntimeError("Telegram hız sınırı aşılamadı")
 
 
-def send(token: str, chat_id: str, text: str, image_url: str = "") -> None:
+def send(token: str, chat_id: str, text: str, image_url: str = "", silent: bool = False) -> None:
     """Paylaşımı gönderir. Fotoğraf varsa fotoğraflı, yoksa ya da gönderilemezse yalnız metin."""
     if image_url:
         # Önce Telegram fotoğrafı adresten kendisi çeksin; olmazsa indirip biz yükleyelim.
         resp = _call(token, "sendPhoto", json={
-            "chat_id": chat_id, "photo": image_url, "caption": text, "parse_mode": "HTML"})
+            "chat_id": chat_id, "photo": image_url, "caption": text, "parse_mode": "HTML",
+            "disable_notification": silent})
         if resp.ok:
             return
         try:
             img = requests.get(image_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=20)
             img.raise_for_status()
             resp = _call(token, "sendPhoto",
-                         data={"chat_id": chat_id, "caption": text, "parse_mode": "HTML"},
+                         data={"chat_id": chat_id, "caption": text, "parse_mode": "HTML",
+                               "disable_notification": str(silent).lower()},
                          files={"photo": ("foto.jpg", img.content)})
             if resp.ok:
                 return
@@ -80,6 +82,6 @@ def send(token: str, chat_id: str, text: str, image_url: str = "") -> None:
 
     resp = _call(token, "sendMessage", json={
         "chat_id": chat_id, "text": text, "parse_mode": "HTML",
-        "link_preview_options": {"is_disabled": True}})
+        "link_preview_options": {"is_disabled": True}, "disable_notification": silent})
     if not resp.ok:
         raise RuntimeError(f"Telegram hatası {resp.status_code}: {resp.text}")

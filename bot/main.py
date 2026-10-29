@@ -11,11 +11,14 @@ Ayarlar ortam değişkenlerinden ya da proje klasöründeki .env dosyasından ok
   OLLAMA_URL          (isteğe bağlı) varsayılan http://localhost:11434
   MAX_POSTS_PER_RUN   (isteğe bağlı) bir turda en fazla paylaşım, varsayılan 4
   INTERVAL_MINUTES    (isteğe bağlı) --loop modunda turlar arası süre, varsayılan 10
+  QUIET_HOURS         (isteğe bağlı) bildirimsiz paylaşım saatleri, varsayılan 0-8; kapatmak için boş bırak
   DRY_RUN=1           kanala göndermek yerine paylaşımları ekrana yazar
 """
 
+import datetime
 import json
 import logging
+import logging.handlers
 import os
 import sys
 import time
@@ -61,6 +64,16 @@ def load_env_file() -> None:
                 os.environ.setdefault(key.strip(), value.strip().strip('"'))
 
 
+def is_quiet_now() -> bool:
+    """Gece saatlerinde paylaşımlar bildirim sesi çıkarmadan gider."""
+    hours = os.environ.get("QUIET_HOURS", "0-8").strip()
+    if not hours:
+        return False
+    start, end = (int(h) for h in hours.split("-"))
+    hour = datetime.datetime.now().hour
+    return start <= hour < end if start <= end else hour >= start or hour < end
+
+
 def run_once() -> None:
     dry_run = os.environ.get("DRY_RUN") == "1"
     channel = os.environ.get("TELEGRAM_CHANNEL", "@krizmasasitr")
@@ -88,6 +101,8 @@ def run_once() -> None:
     if new_items_to_post:
         posts = editor.write_posts(new_items_to_post, [r["h"] for r in recent], max_posts)
 
+    silent = is_quiet_now()
+    sent = 0
     for post in posts:
         text = telegram.format_post(post, channel)
         image = next((i.image for i in post.items if i.image), "")
@@ -96,21 +111,38 @@ def run_once() -> None:
         if dry_run:
             print("-" * 40 + f"\n[Fotoğraf: {image or 'yok'}]\n" + text)
         else:
-            telegram.send(os.environ["TELEGRAM_BOT_TOKEN"], channel, text, image)
+            try:
+                telegram.send(os.environ["TELEGRAM_BOT_TOKEN"], channel, text, image, silent)
+            except Exception as exc:  # bir paylaşım gitmezse diğerleri yine gitsin
+                log.error("Paylaşım gönderilemedi: %s", exc)
+                continue
             time.sleep(3)
+        sent += 1
         recent.append({"t": now, "h": post.headline})
+
+    if posts and not sent and not dry_run:
+        # Hiçbiri gitmediyse haberleri görüldü sayma, bir sonraki turda yeniden denensin.
+        raise RuntimeError("Hiçbir paylaşım gönderilemedi. Kanal adını ve botun yönetici iznini kontrol et.")
 
     for item in new_items:
         seen[item.id] = now
     if not dry_run:
         save_state({"seen": seen, "recent": recent, "failed_sources": failed})
-    log.info("Tur bitti: %d paylaşım.", len(posts))
+    log.info("Tur bitti: %d paylaşım%s.", sent, " (gece modu, bildirimsiz)" if silent and sent else "")
 
 
 def main() -> int:
+    os.makedirs(os.path.join(ROOT, "logs"), exist_ok=True)
+    file_log = logging.handlers.RotatingFileHandler(
+        os.path.join(ROOT, "logs", "bot.log"), maxBytes=1_000_000, backupCount=3, encoding="utf-8")
+    file_log.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s", "%Y-%m-%d %H:%M"))
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s",
                         datefmt="%H:%M")
+    logging.getLogger().addHandler(file_log)
     load_env_file()
+    if os.environ.get("DRY_RUN") != "1" and not os.environ.get("TELEGRAM_BOT_TOKEN"):
+        log.error(".env dosyasında TELEGRAM_BOT_TOKEN yok. Anahtarı ekleyip botu yeniden başlat.")
+        return 2  # baslat.bat bu kodu görünce yeniden denemez, durur
     if "--loop" not in sys.argv:
         run_once()
         return 0

@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import time
 from dataclasses import dataclass
 
 import requests
@@ -90,10 +91,23 @@ def build_prompt(items: list[Item], recent_headlines: list[str]) -> str:
     )
 
 
+def _chat(payload: dict) -> dict:
+    """Ollama'ya istek atar. Model ilk yüklenirken ya da Ollama yeni açılırken hata
+    verebildiği için birkaç kez dener."""
+    for attempt in range(3):
+        try:
+            resp = requests.post(f"{OLLAMA_URL}/api/chat", json=payload, timeout=900)
+            resp.raise_for_status()
+            return resp.json()
+        except requests.RequestException as exc:
+            if attempt == 2:
+                raise RuntimeError(f"Ollama yanıt vermedi ({exc}). Ollama açık mı?") from exc
+            log.warning("Ollama hatası, 30 saniye sonra tekrar denenecek: %s", exc)
+            time.sleep(30)
+
+
 def write_posts(items: list[Item], recent_headlines: list[str], max_posts: int) -> list[Post]:
-    resp = requests.post(
-        f"{OLLAMA_URL}/api/chat",
-        json={
+    data = _chat({
             "model": MODEL,
             "stream": False,
             "format": POST_SCHEMA,
@@ -102,11 +116,7 @@ def write_posts(items: list[Item], recent_headlines: list[str], max_posts: int) 
                 {"role": "system", "content": SYSTEM.format(max_posts=max_posts)},
                 {"role": "user", "content": build_prompt(items, recent_headlines)},
             ],
-        },
-        timeout=600,
-    )
-    resp.raise_for_status()
-    data = resp.json()
+    })
 
     try:
         raw_posts = json.loads(data["message"]["content"])["posts"]

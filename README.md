@@ -39,6 +39,14 @@ haberleri görüldü olarak işaretler. Paylaşımlar ikinci turdan itibaren ba�
 6. **Başlat:** `baslat.bat` dosyasına çift tıkla. İlk açılışta gerekli paketleri kurar,
    sonra çalışmaya başlar. Pencere açık kaldıkça bot çalışır.
 
+**Bilgisayar uykuya geçerse bot durur.** *Ayarlar → Sistem → Güç* bölümünde, prize takılıyken
+ekranın kapanmasına izin ver ama "uyku" süresini **Hiçbir zaman** yap. Dizüstü bilgisayarda
+kapak kapatıldığında ne olacağını da *Denetim Masası → Güç Seçenekleri → Kapağı kapatmanın
+yapacağı işlemi seçin* bölümünden **Hiçbir şey yapma** olarak ayarla.
+
+Bot beklenmedik şekilde kapanırsa `baslat.bat` 30 saniye sonra onu yeniden başlatır. Botun
+geçmiş kayıtları `logs/bot.log` dosyasında durur.
+
 **Bilgisayar açıldığında kendiliğinden başlasın istersen:** `Win + R` → `shell:startup`
 yaz → açılan klasöre `baslat.bat` için bir kısayol koy.
 
@@ -59,7 +67,8 @@ Modeli değiştirdiysen önce `ollama pull <model adı>` ile indirmeyi unutma.
 
 - **Kaynak eklemek ya da çıkarmak:** `sources.yaml` dosyasını düzenle.
 - **`.env` içindeki diğer ayarlar:** `MAX_POSTS_PER_RUN` (bir turda en fazla paylaşım,
-  varsayılan 4), `INTERVAL_MINUTES` (turlar arası dakika, varsayılan 10).
+  varsayılan 4), `INTERVAL_MINUTES` (turlar arası dakika, varsayılan 10), `QUIET_HOURS`
+  (bildirim sesi olmadan paylaşılan saatler, varsayılan `0-8`; kapatmak için boş bırak).
 - **Çalışmayan kaynaklar:** Pencerede her turda listelenir, ayrıca `state/state.json`
   içindeki `failed_sources` alanına yazılır.
 - **Deneme:** `.env` dosyasına `DRY_RUN=1` eklersen bot kanala göndermez, paylaşımları

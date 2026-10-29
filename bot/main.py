@@ -6,7 +6,7 @@ Kullanım:
 
 Ayarlar ortam değişkenlerinden ya da proje klasöründeki .env dosyasından okunur:
   TELEGRAM_BOT_TOKEN  BotFather'dan alınan anahtar
-  TELEGRAM_CHANNEL    kanal adı, örn. @krizmasasi
+  TELEGRAM_CHANNEL    kanal adı, örn. @krizmasasitr
   OLLAMA_MODEL        (isteğe bağlı) varsayılan gemma3:12b
   OLLAMA_URL          (isteğe bağlı) varsayılan http://localhost:11434
   MAX_POSTS_PER_RUN   (isteğe bağlı) bir turda en fazla paylaşım, varsayılan 4
@@ -63,7 +63,7 @@ def load_env_file() -> None:
 
 def run_once() -> None:
     dry_run = os.environ.get("DRY_RUN") == "1"
-    channel = os.environ.get("TELEGRAM_CHANNEL", "@krizmasasi")
+    channel = os.environ.get("TELEGRAM_CHANNEL", "@krizmasasitr")
     max_posts = int(os.environ.get("MAX_POSTS_PER_RUN", "4"))
 
     now = time.time()

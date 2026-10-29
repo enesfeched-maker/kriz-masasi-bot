@@ -1,7 +1,7 @@
 # Kriz Masası botu
 
 Dünyadaki krizleri (savaş, diplomasi, ekonomik şoklar, afetler) güvenilir kaynaklardan
-toplayıp Türkçe özetleyen ve [@krizmasasi](https://t.me/krizmasasi) Telegram kanalına
+toplayıp Türkçe özetleyen ve [@krizmasasitr](https://t.me/krizmasasitr) Telegram kanalına
 gönderen bot. Özetleri bilgisayarında çalışan ücretsiz bir yapay zekâ modeli
 ([Ollama](https://ollama.com)) yazar, hiçbir ücretli servis kullanılmaz.
 

@@ -1,0 +1,35 @@
+# Kriz Masası haber kaynakları.
+# tier 1: ilk duyuran ajans ve büyük yayınlar. Tek başına "SON DAKİKA" için yeterli.
+# tier 2: diğer güvenilir kaynaklar. Tek başına kalırsa haber "İddia" etiketiyle gider.
+# Bir kaynağı kapatmak için satırın başına # koy.
+
+sources:
+  # 1. Hız: ajanslar ve büyük yayınlar
+  - {name: Reuters, tier: 1, url: "https://news.google.com/rss/search?q=when:1d+source:Reuters&hl=en-US&gl=US&ceid=US:en"}
+  - {name: AP, tier: 1, url: "https://news.google.com/rss/search?q=when:1d+source:Associated+Press&hl=en-US&gl=US&ceid=US:en"}
+  - {name: Anadolu Ajansı, tier: 1, url: "https://www.aa.com.tr/tr/rss/default?cat=guncel"}
+  - {name: Anadolu Agency, tier: 1, url: "https://www.aa.com.tr/en/rss/default?cat=live"}
+  - {name: BBC World, tier: 1, url: "https://feeds.bbci.co.uk/news/world/rss.xml"}
+  - {name: Al Jazeera, tier: 1, url: "https://www.aljazeera.com/xml/rss/all.xml"}
+
+  # 2. Türkçe kaynaklar
+  - {name: BBC Türkçe, tier: 1, url: "https://feeds.bbci.co.uk/turkce/rss.xml"}
+  - {name: DW Türkçe, tier: 2, url: "https://rss.dw.com/rdf/rss-tur-all"}
+  - {name: Euronews Türkçe, tier: 2, url: "https://feeds.feedburner.com/euronews/tr/home"}
+  - {name: TRT Haber, tier: 2, url: "https://www.trthaber.com/gundem_articles.rss"}
+  - {name: T.C. Dışişleri Bakanlığı, tier: 1, url: "https://www.mfa.gov.tr/rss.tr.mfa"}
+
+  # 3. Savaş ve çatışma
+  - {name: ISW, tier: 2, url: "https://www.understandingwar.org/rss.xml"}
+  - {name: Kyiv Independent, tier: 2, url: "https://kyivindependent.com/news-archive/rss/"}
+  - {name: Times of Israel, tier: 2, url: "https://www.timesofisrael.com/feed/"}
+  - {name: NYT Middle East, tier: 2, url: "https://rss.nytimes.com/services/xml/rss/nyt/MiddleEast.xml"}
+
+  # 4. Diplomasi ve ekonomik şoklar
+  - {name: BM Haber Merkezi, tier: 1, url: "https://news.un.org/feed/subscribe/en/news/all/rss.xml"}
+  - {name: CNBC, tier: 2, url: "https://www.cnbc.com/id/20910258/device/rss/rss.html"}
+  - {name: Dünya Gazetesi, tier: 2, url: "https://www.dunya.com/rss"}
+
+  # 5. Afetler
+  - {name: USGS, tier: 1, url: "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_day.atom"}
+  - {name: GDACS, tier: 1, url: "https://www.gdacs.org/xml/rss.xml"}

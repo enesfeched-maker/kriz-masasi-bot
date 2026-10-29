@@ -19,6 +19,9 @@ CATEGORY_TAGS = {
 }
 
 
+CAPTION_LIMIT = 1024
+
+
 def format_post(post: Post, channel: str) -> str:
     # "İddia" etiketi yalnızca çatışma ve diplomasi haberlerinde anlamlı;
     # tek kaynaklı piyasa verisi ya da afet haberi iddia sayılmaz.
@@ -29,41 +32,54 @@ def format_post(post: Post, channel: str) -> str:
     else:
         label = "🌍"
 
-    seen, links = set(), []
-    for item in post.items:
-        if item.source in seen:
-            continue
-        seen.add(item.source)
-        links.append(f'<a href="{html.escape(item.link, quote=True)}">{html.escape(item.source)}</a>')
-
-    lines = [
-        f"{label} {html.escape(post.headline, quote=False)}",
-        "",
-        html.escape(post.body, quote=False),
-        "",
-        "🔗 " + " · ".join(links),
+    sources = list(dict.fromkeys(item.source for item in post.items))
+    footer = [
+        "📰 Kaynak: " + html.escape(", ".join(sources), quote=False),
         f"{CATEGORY_TAGS.get(post.category, '#Dünya')} | {channel}",
     ]
-    return "\n".join(lines)[:4000]
+    head = f"{label} {html.escape(post.headline, quote=False)}"
+    body = html.escape(post.body, quote=False)
+
+    # Fotoğraflı mesajlarda Telegram en fazla 1024 karakter kabul eder.
+    room = CAPTION_LIMIT - len(head) - len("\n".join(footer)) - 6
+    if len(body) > room:
+        body = body[:room].rsplit(" ", 1)[0] + "…"
+    return "\n".join([head, "", body, "", *footer])
 
 
-def send(token: str, chat_id: str, text: str) -> None:
+def _call(token: str, method: str, **kwargs) -> requests.Response:
     for attempt in range(3):
-        resp = requests.post(
-            f"https://api.telegram.org/bot{token}/sendMessage",
-            json={
-                "chat_id": chat_id,
-                "text": text,
-                "parse_mode": "HTML",
-                "link_preview_options": {"is_disabled": True},
-            },
-            timeout=20,
-        )
+        resp = requests.post(f"https://api.telegram.org/bot{token}/{method}", timeout=60, **kwargs)
         if resp.status_code == 429:  # Telegram hız sınırı: bekleyip tekrar dene
             wait = resp.json().get("parameters", {}).get("retry_after", 5)
             time.sleep(wait + 1)
             continue
-        if not resp.ok:
-            raise RuntimeError(f"Telegram hatası {resp.status_code}: {resp.text}")
-        return
+        return resp
     raise RuntimeError("Telegram hız sınırı aşılamadı")
+
+
+def send(token: str, chat_id: str, text: str, image_url: str = "") -> None:
+    """Paylaşımı gönderir. Fotoğraf varsa fotoğraflı, yoksa ya da gönderilemezse yalnız metin."""
+    if image_url:
+        # Önce Telegram fotoğrafı adresten kendisi çeksin; olmazsa indirip biz yükleyelim.
+        resp = _call(token, "sendPhoto", json={
+            "chat_id": chat_id, "photo": image_url, "caption": text, "parse_mode": "HTML"})
+        if resp.ok:
+            return
+        try:
+            img = requests.get(image_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=20)
+            img.raise_for_status()
+            resp = _call(token, "sendPhoto",
+                         data={"chat_id": chat_id, "caption": text, "parse_mode": "HTML"},
+                         files={"photo": ("foto.jpg", img.content)})
+            if resp.ok:
+                return
+        except requests.RequestException:
+            pass
+        log.warning("Fotoğraf gönderilemedi, yalnız metin gidiyor: %s", image_url)
+
+    resp = _call(token, "sendMessage", json={
+        "chat_id": chat_id, "text": text, "parse_mode": "HTML",
+        "link_preview_options": {"is_disabled": True}})
+    if not resp.ok:
+        raise RuntimeError(f"Telegram hatası {resp.status_code}: {resp.text}")

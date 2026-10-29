@@ -13,7 +13,7 @@ Bot bilgisayarın açık kaldıkça her 10 dakikada bir tur atar. Her turda:
 2. Yeni haberleri yerel modele verir. Model konu dışı haberleri eler, aynı olayı anlatan
    haberleri birleştirir, son 48 saatte paylaşılmış olayları tekrarlamaz ve en önemli
    birkaç olay için kısa Türkçe paylaşımlar yazar.
-3. Paylaşımları kaynak linkleriyle kanala gönderir:
+3. Paylaşımları haberin fotoğrafıyla (varsa) ve kaynak adıyla kanala gönderir:
    - 🔴 **SON DAKİKA**: birinci grup bir kaynaktan ya da iki farklı kaynaktan gelen acil haber
    - 🌍 doğrulanmış diğer haberler
    - ⚠️ **İDDİA**: tek bir ikinci grup kaynağa dayanan haber

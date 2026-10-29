@@ -27,6 +27,7 @@ class Item:
     summary: str
     link: str
     published: float  # unix zaman damgası
+    image: str = ""   # akışta varsa haberin fotoğrafı
 
 
 def load_sources(path: str) -> list[dict]:
@@ -42,6 +43,42 @@ def clean(text: str, limit: int) -> str:
 
 def item_id(link: str, title: str) -> str:
     return hashlib.sha1((link or title).encode("utf-8")).hexdigest()[:16]
+
+
+def entry_image(entry) -> str:
+    """Akış kaydındaki fotoğraf adresini bulur (media:content, media:thumbnail, enclosure)."""
+    for media in entry.get("media_content", []):
+        if media.get("url") and media.get("medium", "image") == "image" \
+                and not media.get("type", "image/").startswith("video"):
+            return media["url"]
+    for thumb in entry.get("media_thumbnail", []):
+        if thumb.get("url"):
+            return thumb["url"]
+    for link in entry.get("links", []):
+        if link.get("rel") == "enclosure" and link.get("type", "").startswith("image") and link.get("href"):
+            return link["href"]
+    return ""
+
+
+OG_IMAGE_RES = [
+    re.compile(r'<meta[^>]+(?:property|name)=["\'](?:og:image|twitter:image)["\'][^>]+content=["\']([^"\']+)', re.I),
+    re.compile(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+(?:property|name)=["\'](?:og:image|twitter:image)["\']', re.I),
+]
+
+
+def page_image(url: str) -> str:
+    """Haber sayfasının paylaşım görselini (og:image) bulur. Bulamazsa boş döner."""
+    if not url or "news.google.com" in url:
+        return ""
+    try:
+        resp = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=15)
+        page = resp.text[:300_000]
+        for pattern in OG_IMAGE_RES:
+            if match := pattern.search(page):
+                return html.unescape(match.group(1))
+        return ""
+    except requests.RequestException:
+        return ""
 
 
 def fetch_source(source: dict, max_age_hours: float) -> list[Item]:
@@ -70,6 +107,7 @@ def fetch_source(source: dict, max_age_hours: float) -> list[Item]:
             summary=clean(entry.get("summary", ""), 600),
             link=link,
             published=published,
+            image=entry_image(entry),
         ))
     return items
 

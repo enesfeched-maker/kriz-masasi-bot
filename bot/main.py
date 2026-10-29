@@ -90,10 +90,13 @@ def run_once() -> None:
 
     for post in posts:
         text = telegram.format_post(post, channel)
+        image = next((i.image for i in post.items if i.image), "")
+        if not image:
+            image = next((img for i in post.items if (img := feeds.page_image(i.link))), "")
         if dry_run:
-            print("-" * 40 + "\n" + text)
+            print("-" * 40 + f"\n[Fotoğraf: {image or 'yok'}]\n" + text)
         else:
-            telegram.send(os.environ["TELEGRAM_BOT_TOKEN"], channel, text)
+            telegram.send(os.environ["TELEGRAM_BOT_TOKEN"], channel, text, image)
             time.sleep(3)
         recent.append({"t": now, "h": post.headline})
 

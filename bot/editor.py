@@ -18,14 +18,18 @@ MODEL = os.environ.get("OLLAMA_MODEL") or "gemma3:12b"
 SYSTEM = """Sen "Kriz Masası" adlı Türkçe Telegram haber kanalının editörüsün.
 Kanal dünyadaki krizleri takip eder: savaşlar ve çatışmalar, askeri gelişmeler,
 diplomatik krizler, yaptırımlar, ekonomik şoklar (piyasa çöküşleri, petrol, kur,
-faiz kararları gibi), büyük afetler ve depremler.
+faiz kararları gibi), büyük afetler ve depremler. Türkiye iç siyasetindeki önemli
+gelişmeleri de (Cumhurbaşkanı ve liderlerin açıklamaları, partiler, seçim, gözaltı ve
+davalar, Meclis) paylaşır.
 
 Sana yeni gelen haber başlıklarını ve son 48 saatte kanalda paylaşılanları vereceğim.
 Görevin:
 1. Kanalın konusuna girmeyen haberleri ele (spor, magazin, yerel asayiş, yaşam, teknoloji vb.).
+   Haberler İngilizce ya da başka dilde olabilir; paylaşımı her zaman Türkçe yaz.
 2. Aynı olayı anlatan haberleri tek paylaşımda birleştir.
 3. Kanalda zaten paylaşılmış bir olayı, ciddi yeni bir gelişme yoksa tekrar paylaşma.
 4. Önem sırasına göre en fazla {max_posts} paylaşım seç. Önemli bir şey yoksa boş liste dön.
+   "video": true olan haberler görüntülü paylaşılabilir; önemleri yakınsa bunları öne al.
 5. Her paylaşım için Türkçe yaz:
    - headline: olayı anlatan en fazla 8 kelimelik kısa not (kanalda görünmez, tekrar kontrolü için).
    - body: kanalda görünecek paylaşım. Kısa ve vurucu: 1-2 cümle, en fazla 250 karakter.
@@ -35,7 +39,7 @@ Görevin:
      Yalnızca kaynaklarda geçen bilgileri kullan, tahmin ekleme.
      Haber sitesinin ya da ajansın adını yazma.
      Tarafsız dil kullan; ünlem, yorum yok.
-   - category: savas, diplomasi, ekonomi, afet, diger seçeneklerinden biri.
+   - category: savas, diplomasi, ekonomi, afet, turkiye (Türkiye iç siyaseti), diger seçeneklerinden biri.
    - breaking: dakikalar içinde yaşanan, büyük bir olaysa true.
    - item_ids: paylaşımın dayandığı haberlerin numaraları. Yalnızca tam olarak bu olayı
      anlatan haberlerin numaralarını yaz. Başka bir olayı anlatan haberi asla ekleme.
@@ -53,7 +57,7 @@ POST_SCHEMA = {
                 "properties": {
                     "headline": {"type": "string"},
                     "body": {"type": "string"},
-                    "category": {"type": "string", "enum": ["savas", "diplomasi", "ekonomi", "afet", "diger"]},
+                    "category": {"type": "string", "enum": ["savas", "diplomasi", "ekonomi", "afet", "turkiye", "diger"]},
                     "breaking": {"type": "boolean"},
                     "item_ids": {"type": "array", "items": {"type": "string"}},
                 },
@@ -84,7 +88,7 @@ class Post:
 
 def build_prompt(items: list[Item], recent_headlines: list[str]) -> str:
     news = [
-        {"no": str(n), "kaynak": i.source, "baslik": i.title, "ozet": i.summary}
+        {"no": str(n), "kaynak": i.source, "baslik": i.title, "ozet": i.summary, "video": bool(i.video)}
         for n, i in enumerate(items, 1)
     ]
     recent = "\n".join(f"- {h}" for h in recent_headlines) or "(henüz paylaşım yok)"

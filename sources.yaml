@@ -2,6 +2,7 @@
 # tier 1: ilk duyuran ajans ve büyük yayınlar. Tek başına "SON DAKİKA" için yeterli.
 # tier 2: diğer güvenilir kaynaklar. Tek başına kalırsa haber "İddia" etiketiyle gider.
 # Bir kaynağı kapatmak için satırın başına # koy.
+# "telegram:" satırları açık Telegram kanallarıdır (t.me/s/ adresinden okunur, videolar da gelir).
 # Kapalı olanlar: Dışişleri (akışı bozuk), ISW ve Times of Israel (otomatik erişimi engelliyorlar).
 
 sources:
@@ -19,6 +20,12 @@ sources:
   - {name: Euronews Türkçe, tier: 2, url: "https://feeds.feedburner.com/euronews/tr/home"}
   - {name: TRT Haber, tier: 2, url: "https://www.trthaber.com/gundem_articles.rss"}
   # - {name: T.C. Dışişleri Bakanlığı, tier: 1, url: "https://www.mfa.gov.tr/rss.tr.mfa"}
+
+  # Telegram kanalları: hızlı haber ve video
+  - {name: Anadolu Ajansı Telegram, tier: 1, telegram: anadoluajansi}
+  - {name: Halk TV, tier: 2, telegram: halktvcomtr}
+  - {name: Clash Report, tier: 2, telegram: ClashReport}
+  - {name: War Monitor, tier: 2, telegram: warmonitors}
 
   # 3. Savaş ve çatışma
   # - {name: ISW, tier: 2, url: "https://www.understandingwar.org/rss.xml"}

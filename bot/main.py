@@ -153,14 +153,15 @@ def run_once() -> None:
     sent = 0
     for post in posts:
         text = telegram.format_post(post, handle)
+        video = next((i.video for i in post.items if i.video), "")
         image = next((i.image for i in post.items if i.image), "")
         if not image:
             image = next((img for i in post.items if (img := feeds.page_image(i.link))), "")
         if dry_run:
-            print("-" * 40 + f"\n[Fotoğraf: {image or 'yok'}]\n" + text)
+            print("-" * 40 + f"\n[Video: {video or 'yok'}] [Fotoğraf: {image or 'yok'}]\n" + text)
         else:
             try:
-                telegram.send(os.environ["TELEGRAM_BOT_TOKEN"], channel, text, image, silent)
+                telegram.send(os.environ["TELEGRAM_BOT_TOKEN"], channel, text, image, silent, video)
             except Exception as exc:  # bir paylaşım gitmezse diğerleri yine gitsin
                 log.error("Paylaşım gönderilemedi: %s", exc)
                 continue

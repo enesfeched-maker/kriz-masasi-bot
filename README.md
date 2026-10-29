@@ -1,6 +1,6 @@
 # Kriz Masası botu
 
-Dünyadaki krizleri (savaş, diplomasi, ekonomik şoklar, afetler) güvenilir kaynaklardan
+Dünyadaki krizleri (savaş, diplomasi, ekonomik şoklar, afetler) ve Türkiye iç siyasetini güvenilir kaynaklardan
 toplayıp Türkçe özetleyen ve [@krizmasasitr](https://t.me/krizmasasitr) Telegram kanalına
 gönderen bot. Özetleri bilgisayarında çalışan ücretsiz bir yapay zekâ modeli
 ([Ollama](https://ollama.com)) yazar, hiçbir ücretli servis kullanılmaz.
@@ -9,11 +9,12 @@ gönderen bot. Özetleri bilgisayarında çalışan ücretsiz bir yapay zekâ mo
 
 Bot bilgisayarın açık kaldıkça her 10 dakikada bir tur atar. Her turda:
 
-1. `sources.yaml` içindeki haber kaynaklarını okur ve son 6 saatin yeni haberlerini alır.
+1. `sources.yaml` içindeki haber kaynaklarını (RSS akışları ve açık Telegram kanalları) okur ve
+   son 6 saatin yeni haberlerini alır. Telegram kanallarındaki videolar da gelir.
 2. Yeni haberleri yerel modele verir. Model konu dışı haberleri eler, aynı olayı anlatan
    haberleri birleştirir, son 48 saatte paylaşılmış olayları tekrarlamaz ve en önemli
    birkaç olay için kısa Türkçe paylaşımlar yazar.
-3. Paylaşımları haberin fotoğrafıyla (varsa) kanala gönderir. Paylaşımlar kısa ve kaynaksızdır:
+3. Paylaşımları haberin videosuyla ya da fotoğrafıyla (varsa) kanala gönderir. Paylaşımlar kısa ve kaynaksızdır:
    `🔴` ile başlayan 1-2 cümle, altta kanal adı. Acil haberlerde `🔴 SON DAKİKA:`, tek bir ikinci
    grup kaynağa dayanan çatışma ve diplomasi haberlerinde `🔴 İddia:` yazar.
 4. Görülen haberleri `state/state.json` dosyasına kaydeder ki aynı haber iki kez gitmesin.
@@ -72,7 +73,8 @@ Modeli değiştirdiysen önce `ollama pull <model adı>` ile indirmeyi unutma.
 
 ## Ayarlar
 
-- **Kaynak eklemek ya da çıkarmak:** `sources.yaml` dosyasını düzenle.
+- **Kaynak eklemek ya da çıkarmak:** `sources.yaml` dosyasını düzenle. Açık bir Telegram kanalı
+  eklemek için `- {name: Kanal Adı, tier: 2, telegram: kullaniciadi}` satırı yeterli.
 - **`.env` içindeki diğer ayarlar:** `MAX_POSTS_PER_RUN` (bir turda en fazla paylaşım,
   varsayılan 4), `INTERVAL_MINUTES` (turlar arası dakika, varsayılan 10), `QUIET_HOURS`
   (bildirim sesi olmadan paylaşılan saatler, varsayılan `0-8`; kapatmak için boş bırak),

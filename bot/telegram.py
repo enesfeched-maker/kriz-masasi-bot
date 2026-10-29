@@ -44,8 +44,35 @@ def _call(token: str, method: str, **kwargs) -> requests.Response:
     raise RuntimeError("Telegram hız sınırı aşılamadı")
 
 
-def send(token: str, chat_id: str, text: str, image_url: str = "", silent: bool = False) -> None:
-    """Paylaşımı gönderir. Fotoğraf varsa fotoğraflı, yoksa ya da gönderilemezse yalnız metin."""
+def _send_video(token: str, chat_id: str, text: str, video_url: str, silent: bool) -> bool:
+    """Videoyu önce adresten, olmazsa indirip yükleyerek gönderir. Başarılıysa True."""
+    resp = _call(token, "sendVideo", json={
+        "chat_id": chat_id, "video": video_url, "caption": text, "parse_mode": "HTML",
+        "supports_streaming": True, "disable_notification": silent})
+    if resp.ok:
+        return True
+    try:
+        vid = requests.get(video_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=60)
+        vid.raise_for_status()
+        if len(vid.content) > 49_000_000:  # Telegram botları en fazla 50 MB yükleyebilir
+            return False
+        resp = _call(token, "sendVideo",
+                     data={"chat_id": chat_id, "caption": text, "parse_mode": "HTML",
+                           "supports_streaming": "true", "disable_notification": str(silent).lower()},
+                     files={"video": ("video.mp4", vid.content)})
+        return resp.ok
+    except requests.RequestException:
+        return False
+
+
+def send(token: str, chat_id: str, text: str, image_url: str = "", silent: bool = False,
+         video_url: str = "") -> None:
+    """Paylaşımı gönderir: video varsa videolu, yoksa fotoğraflı, o da olmazsa yalnız metin."""
+    if video_url:
+        if _send_video(token, chat_id, text, video_url, silent):
+            return
+        log.warning("Video gönderilemedi, fotoğraf deneniyor: %s", video_url)
+
     if image_url:
         # Önce Telegram fotoğrafı adresten kendisi çeksin; olmazsa indirip biz yükleyelim.
         resp = _call(token, "sendPhoto", json={

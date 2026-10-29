@@ -1,6 +1,7 @@
-"""RSS/Atom kaynaklarını okuyup yeni haberleri toplar."""
+"""RSS/Atom akışlarını ve açık Telegram kanallarını okuyup yeni haberleri toplar."""
 
 import calendar
+import datetime
 import hashlib
 import html
 import logging
@@ -28,6 +29,7 @@ class Item:
     link: str
     published: float  # unix zaman damgası
     image: str = ""   # akışta varsa haberin fotoğrafı
+    video: str = ""   # Telegram kanalı paylaşımındaki video
 
 
 def load_sources(path: str) -> list[dict]:
@@ -68,7 +70,7 @@ OG_IMAGE_RES = [
 
 def page_image(url: str) -> str:
     """Haber sayfasının paylaşım görselini (og:image) bulur. Bulamazsa boş döner."""
-    if not url or "news.google.com" in url:
+    if not url or "news.google.com" in url or url.startswith("https://t.me/"):
         return ""
     try:
         resp = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=15)
@@ -81,7 +83,56 @@ def page_image(url: str) -> str:
         return ""
 
 
+TG_POST_RE = re.compile(r'data-post="([^"]+)"')
+TG_TEXT_RE = re.compile(r'<div class="tgme_widget_message_text[^"]*"[^>]*>(.*?)</div>', re.S)
+TG_PHOTO_RE = re.compile(r"(?:message_photo_wrap|message_video_thumb)[^>]*background-image:url\('([^']+)'\)")
+TG_VIDEO_RE = re.compile(r'<video[^>]+src="([^"]+)"')
+TG_TIME_RE = re.compile(r'<time[^>]+datetime="([^"]+)"')
+TG_MENTION_RE = re.compile(r"(?:https?://)?t\.me/\S+|@\w+")
+
+
+def fetch_telegram(source: dict, max_age_hours: float) -> list[Item]:
+    """Açık bir Telegram kanalının son paylaşımlarını t.me/s/ sayfasından okur.
+    Hesap ya da anahtar gerekmez; videolu ve fotoğraflı paylaşımları da alır."""
+    resp = requests.get(f"https://t.me/s/{source['telegram']}",
+                        headers={"User-Agent": "Mozilla/5.0"}, timeout=20)
+    resp.raise_for_status()
+    chunks = resp.text.split('<div class="tgme_widget_message_wrap')[1:]
+    if not chunks:
+        raise ValueError("kanal bulunamadı ya da açık değil")
+
+    now = time.time()
+    items = []
+    for chunk in chunks:
+        post, text, when = TG_POST_RE.search(chunk), TG_TEXT_RE.search(chunk), TG_TIME_RE.search(chunk)
+        if not (post and text and when):
+            continue  # yazısız paylaşımdan haber çıkmaz
+        published = datetime.datetime.fromisoformat(when.group(1)).timestamp()
+        if now - published > max_age_hours * 3600:
+            continue
+        body = TG_MENTION_RE.sub("", html.unescape(TAG_RE.sub(" ", text.group(1).replace("<br/>", "\n"))))
+        body = " ".join(body.split())
+        if len(body) < 20:
+            continue
+        photo, video = TG_PHOTO_RE.search(chunk), TG_VIDEO_RE.search(chunk)
+        link = "https://t.me/" + post.group(1)
+        items.append(Item(
+            id=item_id(link, body),
+            source=source["name"],
+            tier=int(source.get("tier", 2)),
+            title=body[:300],
+            summary=body[300:900],
+            link=link,
+            published=published,
+            image=html.unescape(photo.group(1)) if photo else "",
+            video=html.unescape(video.group(1)) if video else "",
+        ))
+    return items
+
+
 def fetch_source(source: dict, max_age_hours: float) -> list[Item]:
+    if "telegram" in source:
+        return fetch_telegram(source, max_age_hours)
     resp = requests.get(source["url"], headers={"User-Agent": USER_AGENT}, timeout=20)
     resp.raise_for_status()
     feed = feedparser.parse(resp.content)

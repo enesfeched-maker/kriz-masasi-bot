@@ -115,6 +115,19 @@ def maybe_send_summary(state: dict, handle: str, channel: str, dry_run: bool) ->
     log.info("Günün özeti paylaşıldı (%d madde).", len(items))
 
 
+def pick_media(post) -> tuple[str, str]:
+    """Paylaşıma konacak (video, fotoğraf) adreslerini seçer. Görsel yalnızca, model
+    o haberin paylaşımdaki olayın aynısı olduğunu ayrıca doğrularsa kullanılır."""
+    for item in post.items:
+        image = item.image or feeds.page_image(item.link)
+        if not (item.video or image):
+            continue
+        if editor.same_event(post, item):
+            return item.video, image
+        log.info("Görsel paylaşımla uyuşmadı, kullanılmadı: %s | %s", post.headline, item.title[:80])
+    return "", ""
+
+
 def run_once() -> None:
     dry_run = os.environ.get("DRY_RUN") == "1"
     channel = os.environ.get("TELEGRAM_CHANNEL", "@krizmasasitr")
@@ -153,10 +166,7 @@ def run_once() -> None:
     sent = 0
     for post in posts:
         text = telegram.format_post(post, handle)
-        video = next((i.video for i in post.items if i.video), "")
-        image = next((i.image for i in post.items if i.image), "")
-        if not image:
-            image = next((img for i in post.items if (img := feeds.page_image(i.link))), "")
+        video, image = pick_media(post)
         if dry_run:
             print("-" * 40 + f"\n[Video: {video or 'yok'}] [Fotoğraf: {image or 'yok'}]\n" + text)
         else:

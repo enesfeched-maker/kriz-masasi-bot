@@ -176,3 +176,33 @@ def write_daily_summary(posts_today: list[dict]) -> list[str]:
         log.warning("Model geçersiz özet verdi: %s", exc)
         return []
     return [i.strip() for i in items if isinstance(i, str) and i.strip()][:5]
+
+
+MATCH_SCHEMA = {
+    "type": "object",
+    "properties": {"same_event": {"type": "boolean"}},
+    "required": ["same_event"],
+    "additionalProperties": False,
+}
+
+
+def same_event(post: Post, item: Item) -> bool:
+    """Haberin fotoğrafını ya da videosunu paylaşıma koymadan önce, haberin gerçekten
+    paylaşımdaki olayı anlattığını modele ayrıca sorar. Emin değilse False döner."""
+    try:
+        data = _chat({
+            "model": MODEL,
+            "stream": False,
+            "format": MATCH_SCHEMA,
+            "options": {"temperature": 0, "num_ctx": 2048},
+            "messages": [{"role": "user", "content": (
+                f"Paylaşım: {post.body}\n\n"
+                f"Haber: {item.title}. {item.summary[:400]}\n\n"
+                "Bu haber, paylaşımdaki olayın aynısını mı anlatıyor? Haberin dili farklı olabilir. "
+                "Yalnızca aynı yer, aynı kişiler ve aynı olaysa same_event true olsun; "
+                "benzer konu ya da aynı ülke yetmez.")}],
+        })
+        return bool(json.loads(data["message"]["content"])["same_event"])
+    except Exception as exc:  # kontrol yapılamazsa görselsiz gitmesi yanlış görselden iyidir
+        log.warning("Görsel kontrolü yapılamadı: %s", exc)
+        return False

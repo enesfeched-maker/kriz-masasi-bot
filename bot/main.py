@@ -116,15 +116,18 @@ def maybe_send_summary(state: dict, handle: str, channel: str, dry_run: bool) ->
 
 
 def pick_media(post) -> tuple[str, str]:
-    """Paylaşıma konacak (video, fotoğraf) adreslerini seçer. Görsel yalnızca, model
-    o haberin paylaşımdaki olayın aynısı olduğunu ayrıca doğrularsa kullanılır."""
-    for item in post.items:
+    """Paylaşıma konacak (video, fotoğraf) adreslerini seçer. Önce modelin seçtiği asıl
+    haberin görseline bakar; model görselin başka bir olaya ait olduğunu söylerse atlar."""
+    for n, item in enumerate(post.items):
         image = item.image or feeds.page_image(item.link)
         if not (item.video or image):
             continue
-        if editor.same_event(post, item):
+        match = editor.same_event(post, item)
+        # Kontrol yapılamadıysa yalnızca asıl haberin görseline güven.
+        if match or (match is None and n == 0):
             return item.video, image
         log.info("Görsel paylaşımla uyuşmadı, kullanılmadı: %s | %s", post.headline, item.title[:80])
+    log.info("Görselsiz paylaşım: %s", post.headline)
     return "", ""
 
 

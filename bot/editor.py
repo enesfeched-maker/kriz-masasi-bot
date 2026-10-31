@@ -14,6 +14,8 @@ log = logging.getLogger(__name__)
 
 OLLAMA_URL = os.environ.get("OLLAMA_URL") or "http://localhost:11434"
 MODEL = os.environ.get("OLLAMA_MODEL") or "gemma3:12b"
+# Model tur bitince bu kadar süre sonra bellekten çıkar; turlar arasında bilgisayar rahatlar.
+KEEP_ALIVE = os.environ.get("OLLAMA_KEEP_ALIVE") or "1m"
 
 SYSTEM = """Sen "Kriz Masası" adlı Türkçe Telegram haber kanalının editörüsün.
 Kanal dünyadaki krizleri takip eder: savaşlar ve çatışmalar, askeri gelişmeler,
@@ -106,7 +108,8 @@ def _chat(payload: dict) -> dict:
     verebildiği için birkaç kez dener."""
     for attempt in range(3):
         try:
-            resp = requests.post(f"{OLLAMA_URL}/api/chat", json=payload, timeout=900)
+            resp = requests.post(f"{OLLAMA_URL}/api/chat", json={**payload, "keep_alive": KEEP_ALIVE},
+                                 timeout=900)
             resp.raise_for_status()
             return resp.json()
         except requests.RequestException as exc:

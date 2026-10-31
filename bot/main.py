@@ -11,6 +11,7 @@ Ayarlar ortam değişkenlerinden ya da proje klasöründeki .env dosyasından ok
   SIGNATURE           (isteğe bağlı) paylaşımların altına yazılacak imza (örn. @krizmasasitr), varsayılan boş
   OLLAMA_MODEL        (isteğe bağlı) varsayılan gemma3:12b
   OLLAMA_URL          (isteğe bağlı) varsayılan http://localhost:11434
+  OLLAMA_KEEP_ALIVE   (isteğe bağlı) model turdan sonra ne kadar bellekte kalsın, varsayılan 1m
   MAX_POSTS_PER_RUN   (isteğe bağlı) bir turda en fazla paylaşım, varsayılan 4
   INTERVAL_MINUTES    (isteğe bağlı) --loop modunda turlar arası süre, varsayılan 10
   QUIET_HOURS         (isteğe bağlı) bildirimsiz paylaşım saatleri, varsayılan 0-8; kapatmak için boş bırak

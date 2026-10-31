@@ -9,7 +9,7 @@ Ayarlar ortam değişkenlerinden ya da proje klasöründeki .env dosyasından ok
   TELEGRAM_BOT_TOKEN  BotFather'dan alınan anahtar
   TELEGRAM_CHANNEL    kanal adı (örn. @krizmasasitr) ya da sayısal kimliği; kanal_bul.bat ayarlar
   SIGNATURE           (isteğe bağlı) paylaşımların altına yazılacak imza (örn. @krizmasasitr), varsayılan boş
-  OLLAMA_MODEL        (isteğe bağlı) varsayılan gemma3:12b
+  OLLAMA_MODEL        (isteğe bağlı) varsayılan gemma3:4b
   OLLAMA_URL          (isteğe bağlı) varsayılan http://localhost:11434
   OLLAMA_KEEP_ALIVE   (isteğe bağlı) model turdan sonra ne kadar bellekte kalsın, varsayılan 1m
   MAX_POSTS_PER_RUN   (isteğe bağlı) bir turda en fazla paylaşım, varsayılan 4
@@ -63,7 +63,7 @@ def load_env_file() -> None:
     if not os.path.exists(path):
         return
     # PowerShell .env dosyasını farklı bir kodlamayla kaydetmiş olabilir; okunamayan harfleri atla.
-    with open(path, encoding="utf-8", errors="replace") as f:
+    with open(path, encoding="utf-8-sig", errors="replace") as f:
         for line in f:
             line = line.strip()
             if line and not line.startswith("#") and "=" in line:

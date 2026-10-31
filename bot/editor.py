@@ -13,7 +13,7 @@ from bot.feeds import Item
 log = logging.getLogger(__name__)
 
 OLLAMA_URL = os.environ.get("OLLAMA_URL") or "http://localhost:11434"
-MODEL = os.environ.get("OLLAMA_MODEL") or "gemma3:12b"
+MODEL = os.environ.get("OLLAMA_MODEL") or "gemma3:4b"
 # Model tur bitince bu kadar süre sonra bellekten çıkar; turlar arasında bilgisayar rahatlar.
 KEEP_ALIVE = os.environ.get("OLLAMA_KEEP_ALIVE") or "1m"
 

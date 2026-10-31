@@ -29,7 +29,7 @@ haberleri görüldü olarak işaretler. Paylaşımlar ikinci turdan itibaren ba�
 2. **Ollama:** [ollama.com/download](https://ollama.com/download) üzerinden Ollama'yı kur.
    Sonra bir komut penceresi (cmd) aç ve modeli indir:
    ```
-   ollama pull gemma3:12b
+   ollama pull gemma3:4b
    ```
 3. **Bot dosyaları:** Bu sayfada yeşil **Code** düğmesi → **Download ZIP** ile indir ve bir
    klasöre çıkar (örn. `C:\kriz-masasi-bot`).
@@ -65,8 +65,8 @@ Model ne kadar büyükse Türkçesi ve haber seçimi o kadar iyi olur ama bilgis
 
 | Bilgisayar | Önerilen model |
 |---|---|
-| 6 GB ya da daha fazla ekran kartı belleği (VRAM), 16 GB RAM | `gemma3:12b` (varsayılan). 6-8 GB VRAM'de model kısmen işlemcide çalışır, bir tur birkaç dakika sürer. 10 dakikalık aralık için yeterli. |
-| Ekran kartı zayıf ya da yok | `gemma3:4b` (daha hızlı, Türkçesi biraz daha zayıf) |
+| 8 GB'tan az ekran kartı belleği (VRAM) | `gemma3:4b` (varsayılan). Ekran kartına tamamen sığar, bilgisayarı yormaz. |
+| 10 GB ya da daha fazla VRAM | `gemma3:12b` (Türkçesi daha iyi, daha ağır) |
 | 16 GB ya da daha fazla VRAM | `gemma3:27b` |
 
 Modeli değiştirdiysen önce `ollama pull <model adı>` ile indirmeyi unutma.

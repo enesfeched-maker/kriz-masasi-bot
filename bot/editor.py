@@ -26,7 +26,8 @@ davalar, Meclis) paylaşır.
 
 Sana yeni gelen haberleri numaralı bir liste olarak vereceğim.
 Görevin:
-1. Kanalın konusuna girmeyen haberleri ele (spor, magazin, yerel asayiş, yaşam, teknoloji vb.).
+1. Kanalın konusuna girmeyen haberleri ele (spor, magazin, yerel asayiş, yaşam, teknoloji,
+   reklam, bahis, kampanya vb.).
    Haberler İngilizce ya da başka dilde olabilir; paylaşımı her zaman Türkçe yaz.
 2. Aynı olayı anlatan haberleri tek paylaşımda birleştir.
 3. Her paylaşım yalnızca bu listedeki haberlere dayanmalı. Listede olmayan bir olayı,
@@ -36,7 +37,8 @@ Görevin:
 5. Her paylaşım için Türkçe yaz:
    - headline: olayı anlatan en fazla 8 kelimelik kısa not (kanalda görünmez, tekrar kontrolü için).
    - body: kanalda görünecek paylaşım. Kısa ve vurucu: 1-2 cümle, en fazla 250 karakter.
-     Doğrudan olayla başla, giriş cümlesi kurma. Bir liderin ya da yetkilinin sözüyse
+     Doğrudan olayla başla, giriş cümlesi kurma. Somut bilgi ver: kim, ne yaptı, nerede.
+     "Açıklamaları dikkat çekiyor" gibi içi boş cümleler yazma. Bir liderin ya da yetkilinin sözüyse
      "Putin: '...'" ya da "İran Dışişleri: ..." biçiminde, konuşanın adıyla başla.
      Kaynak metni kopyalama, kendi cümlelerinle yaz.
      Yalnızca kaynaklarda geçen bilgileri kullan, tahmin ekleme.

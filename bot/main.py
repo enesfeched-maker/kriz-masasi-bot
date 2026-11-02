@@ -124,24 +124,20 @@ def is_repeat(headline: str, recent: list[dict]) -> bool:
 
 
 def check_post(post, recent: list[dict]):
-    """Paylaşımı göndermeden önce denetler. Tekrar ya da dayandığı haberle uyuşmuyorsa
-    None döner. Yoksa yalnızca doğrulanmış haberleri bırakır ve görseli onlardan seçer.
-    Küçük model bazen eski bir paylaşımı yeniden yazıp alakasız haberlere bağlıyor;
-    bu kontrol hem uydurma paylaşımı hem yanlış görseli engeller."""
+    """Paylaşımı göndermeden önce denetler. Tekrarsa None döner. Modelin seçtiği asıl
+    haber kabul edilir; yanına bağlanan diğer haberler ise modele ayrıca sorulur ve
+    olayla uyuşmayanlar çıkarılır, böylece görsel ve kaynak yalnızca doğru haberden gelir.
+    (Küçük model aynı olay sorusuna bariz eşleşmelerde de "hayır" diyebildiği için
+    asıl haber bu kontrole sokulmaz.)"""
     if is_repeat(post.headline, recent):
         log.info("Tekrar paylaşım, gönderilmedi: %s", post.headline)
         return None
-    kept = []
-    for n, item in enumerate(post.items[:3]):
-        match = editor.same_event(post, item)
-        # Kontrol yapılamadıysa yalnızca modelin seçtiği asıl habere güven.
-        if match or (match is None and n == 0):
+    kept = post.items[:1]
+    for item in post.items[1:3]:
+        if editor.same_event(post, item):
             kept.append(item)
         else:
-            log.info("Haber paylaşımla uyuşmadı: %s | %s", post.headline, item.title[:80])
-    if not kept:
-        log.info("Dayandığı haber doğrulanamadı, gönderilmedi: %s", post.headline)
-        return None
+            log.info("Haber paylaşımla uyuşmadı, çıkarıldı: %s | %s", post.headline, item.title[:80])
     post.items = kept
     return post
 

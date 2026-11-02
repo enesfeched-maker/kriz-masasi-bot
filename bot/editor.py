@@ -30,6 +30,8 @@ Görevin:
    Haberler İngilizce ya da başka dilde olabilir; paylaşımı her zaman Türkçe yaz.
 2. Aynı olayı anlatan haberleri tek paylaşımda birleştir.
 3. Kanalda zaten paylaşılmış bir olayı, ciddi yeni bir gelişme yoksa tekrar paylaşma.
+   Son paylaşımlar listesi yalnızca tekrarı önlemek içindir; oradan paylaşım yazma.
+   Her paylaşım yeni gelen haberlerden birine dayanmalı.
 4. Önem sırasına göre en fazla {max_posts} paylaşım seç. Önemli bir şey yoksa boş liste dön.
    "video": true olan haberler görüntülü paylaşılabilir; önemleri yakınsa bunları öne al.
 5. Her paylaşım için Türkçe yaz:
@@ -124,7 +126,7 @@ def write_posts(items: list[Item], recent_headlines: list[str], max_posts: int) 
             "model": MODEL,
             "stream": False,
             "format": POST_SCHEMA,
-            "options": {"temperature": 0.2, "num_ctx": 8192},
+            "options": {"temperature": 0.2, "num_ctx": 8192, "num_predict": 1500},
             "messages": [
                 {"role": "system", "content": SYSTEM.format(max_posts=max_posts)},
                 {"role": "user", "content": build_prompt(items, recent_headlines)},

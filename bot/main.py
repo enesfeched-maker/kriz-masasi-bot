@@ -22,6 +22,7 @@ Ayarlar ortam değişkenlerinden ya da proje klasöründeki .env dosyasından ok
 """
 
 import datetime
+import difflib
 import json
 import logging
 import logging.handlers
@@ -38,7 +39,7 @@ STATE_PATH = os.path.join(ROOT, "state", "state.json")
 MAX_AGE_HOURS = 6         # bundan eski haberlere bakma
 SEEN_TTL = 7 * 24 * 3600  # görülen haber kimliklerini bu kadar sakla
 RECENT_TTL = 48 * 3600    # son paylaşımları tekrar önlemek için bu kadar sakla
-MAX_ITEMS_PER_RUN = 30    # modele bir turda verilecek en fazla haber
+MAX_ITEMS_PER_RUN = 20    # modele bir turda verilecek en fazla haber
 
 log = logging.getLogger("krizmasasi")
 
@@ -116,19 +117,42 @@ def maybe_send_summary(state: dict, handle: str, channel: str, dry_run: bool) ->
     log.info("Günün özeti paylaşıldı (%d madde).", len(items))
 
 
-def pick_media(post) -> tuple[str, str]:
-    """Paylaşıma konacak (video, fotoğraf) adreslerini seçer. Önce modelin seçtiği asıl
-    haberin görseline bakar; model görselin başka bir olaya ait olduğunu söylerse atlar."""
-    for n, item in enumerate(post.items):
-        image = item.image or feeds.page_image(item.link)
-        if not (item.video or image):
-            continue
+def is_repeat(headline: str, recent: list[dict]) -> bool:
+    """Son 48 saatte neredeyse aynı başlıkla paylaşım yapıldıysa True."""
+    h = headline.lower()
+    return any(difflib.SequenceMatcher(None, h, r["h"].lower()).ratio() > 0.6 for r in recent)
+
+
+def check_post(post, recent: list[dict]):
+    """Paylaşımı göndermeden önce denetler. Tekrar ya da dayandığı haberle uyuşmuyorsa
+    None döner. Yoksa yalnızca doğrulanmış haberleri bırakır ve görseli onlardan seçer.
+    Küçük model bazen eski bir paylaşımı yeniden yazıp alakasız haberlere bağlıyor;
+    bu kontrol hem uydurma paylaşımı hem yanlış görseli engeller."""
+    if is_repeat(post.headline, recent):
+        log.info("Tekrar paylaşım, gönderilmedi: %s", post.headline)
+        return None
+    kept = []
+    for n, item in enumerate(post.items[:3]):
         match = editor.same_event(post, item)
-        # Kontrol yapılamadıysa yalnızca asıl haberin görseline güven.
+        # Kontrol yapılamadıysa yalnızca modelin seçtiği asıl habere güven.
         if match or (match is None and n == 0):
+            kept.append(item)
+        else:
+            log.info("Haber paylaşımla uyuşmadı: %s | %s", post.headline, item.title[:80])
+    if not kept:
+        log.info("Dayandığı haber doğrulanamadı, gönderilmedi: %s", post.headline)
+        return None
+    post.items = kept
+    return post
+
+
+def pick_media(post) -> tuple[str, str]:
+    """Paylaşıma konacak (video, fotoğraf) adreslerini doğrulanmış haberlerden seçer."""
+    for item in post.items:
+        image = item.image or feeds.page_image(item.link)
+        if item.video or image:
             return item.video, image
-        log.info("Görsel paylaşımla uyuşmadı, kullanılmadı: %s | %s", post.headline, item.title[:80])
-    log.info("Görselsiz paylaşım: %s", post.headline)
+    log.info("Görselsiz paylaşım (haberin görseli yok): %s", post.headline)
     return "", ""
 
 
@@ -169,6 +193,8 @@ def run_once() -> None:
     silent = is_quiet_now()
     sent = 0
     for post in posts:
+        if not check_post(post, recent):
+            continue
         text = telegram.format_post(post, handle)
         video, image = pick_media(post)
         if dry_run:

@@ -120,7 +120,7 @@ def maybe_send_summary(state: dict, handle: str, channel: str, dry_run: bool) ->
 def is_repeat(headline: str, recent: list[dict]) -> bool:
     """Son 48 saatte neredeyse aynı başlıkla paylaşım yapıldıysa True."""
     h = headline.lower()
-    return any(difflib.SequenceMatcher(None, h, r["h"].lower()).ratio() > 0.6 for r in recent)
+    return any(difflib.SequenceMatcher(None, h, r["h"].lower()).ratio() > 0.75 for r in recent)
 
 
 def check_post(post, recent: list[dict]):
@@ -191,7 +191,7 @@ def run_once() -> None:
         posts = editor.write_posts(new_items_to_post, [r["h"] for r in recent], budget)
 
     silent = is_quiet_now()
-    sent = 0
+    sent = failed_sends = 0
     for post in posts:
         if not check_post(post, recent):
             continue
@@ -204,12 +204,13 @@ def run_once() -> None:
                 telegram.send(os.environ["TELEGRAM_BOT_TOKEN"], channel, text, image, silent, video)
             except Exception as exc:  # bir paylaşım gitmezse diğerleri yine gitsin
                 log.error("Paylaşım gönderilemedi: %s", exc)
+                failed_sends += 1
                 continue
             time.sleep(3)
         sent += 1
         recent.append({"t": now, "h": post.headline, "b": post.body[:300]})
 
-    if posts and not sent and not dry_run:
+    if failed_sends and not sent and not dry_run:
         # Hiçbiri gitmediyse haberleri görüldü sayma, bir sonraki turda yeniden denensin.
         raise RuntimeError("Hiçbir paylaşım gönderilemedi. Kanal adını ve botun yönetici iznini kontrol et.")
 

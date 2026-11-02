@@ -24,14 +24,13 @@ faiz kararları gibi), büyük afetler ve depremler. Türkiye iç siyasetindeki 
 gelişmeleri de (Cumhurbaşkanı ve liderlerin açıklamaları, partiler, seçim, gözaltı ve
 davalar, Meclis) paylaşır.
 
-Sana yeni gelen haber başlıklarını ve son 48 saatte kanalda paylaşılanları vereceğim.
+Sana yeni gelen haberleri numaralı bir liste olarak vereceğim.
 Görevin:
 1. Kanalın konusuna girmeyen haberleri ele (spor, magazin, yerel asayiş, yaşam, teknoloji vb.).
    Haberler İngilizce ya da başka dilde olabilir; paylaşımı her zaman Türkçe yaz.
 2. Aynı olayı anlatan haberleri tek paylaşımda birleştir.
-3. Kanalda zaten paylaşılmış bir olayı, ciddi yeni bir gelişme yoksa tekrar paylaşma.
-   Son paylaşımlar listesi yalnızca tekrarı önlemek içindir; oradan paylaşım yazma.
-   Her paylaşım yeni gelen haberlerden birine dayanmalı.
+3. Her paylaşım yalnızca bu listedeki haberlere dayanmalı. Listede olmayan bir olayı,
+   daha önce duyduğun bir haberi ya da tahminini asla yazma.
 4. Önem sırasına göre en fazla {max_posts} paylaşım seç. Önemli bir şey yoksa boş liste dön.
    "video": true olan haberler görüntülü paylaşılabilir; önemleri yakınsa bunları öne al.
 5. Her paylaşım için Türkçe yaz:
@@ -93,16 +92,14 @@ class Post:
         return any(i.tier == 1 for i in self.items) or len(sources) >= 2
 
 
-def build_prompt(items: list[Item], recent_headlines: list[str]) -> str:
+def build_prompt(items: list[Item]) -> str:
+    # Son paylaşımlar bilerek verilmiyor: küçük model onları yeniden yazıyordu.
+    # Tekrarlar main.is_repeat ile kodda engellenir.
     news = [
         {"no": str(n), "kaynak": i.source, "baslik": i.title, "ozet": i.summary, "video": bool(i.video)}
         for n, i in enumerate(items, 1)
     ]
-    recent = "\n".join(f"- {h}" for h in recent_headlines) or "(henüz paylaşım yok)"
-    return (
-        f"Son 48 saatte kanalda paylaşılanlar:\n{recent}\n\n"
-        f"Yeni gelen haberler (JSON):\n{json.dumps(news, ensure_ascii=False)}"
-    )
+    return f"Yeni gelen haberler (JSON):\n{json.dumps(news, ensure_ascii=False)}"
 
 
 def _chat(payload: dict) -> dict:
@@ -121,7 +118,7 @@ def _chat(payload: dict) -> dict:
             time.sleep(30)
 
 
-def write_posts(items: list[Item], recent_headlines: list[str], max_posts: int) -> list[Post]:
+def write_posts(items: list[Item], max_posts: int) -> list[Post]:
     data = _chat({
             "model": MODEL,
             "stream": False,
@@ -129,7 +126,7 @@ def write_posts(items: list[Item], recent_headlines: list[str], max_posts: int) 
             "options": {"temperature": 0.2, "num_ctx": 8192, "num_predict": 1500},
             "messages": [
                 {"role": "system", "content": SYSTEM.format(max_posts=max_posts)},
-                {"role": "user", "content": build_prompt(items, recent_headlines)},
+                {"role": "user", "content": build_prompt(items)},
             ],
     })
 

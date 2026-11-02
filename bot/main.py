@@ -188,7 +188,7 @@ def run_once() -> None:
 
     posts = []
     if new_items_to_post and budget:
-        posts = editor.write_posts(new_items_to_post, [r["h"] for r in recent], budget)
+        posts = editor.write_posts(new_items_to_post, budget)
 
     silent = is_quiet_now()
     sent = failed_sends = 0

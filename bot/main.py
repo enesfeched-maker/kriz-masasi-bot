@@ -9,7 +9,9 @@ Ayarlar ortam değişkenlerinden ya da proje klasöründeki .env dosyasından ok
   TELEGRAM_BOT_TOKEN  BotFather'dan alınan anahtar
   TELEGRAM_CHANNEL    kanal adı (örn. @krizmasasitr) ya da sayısal kimliği; kanal_bul.bat ayarlar
   SIGNATURE           (isteğe bağlı) paylaşımların altına yazılacak imza (örn. @krizmasasitr), varsayılan boş
-  OLLAMA_MODEL        (isteğe bağlı) varsayılan gemma3:4b
+  LLM                 (isteğe bağlı) claude (varsayılan, Claude Code ile Haiku) ya da ollama
+  CLAUDE_MODEL        (isteğe bağlı) varsayılan haiku
+  OLLAMA_MODEL        (isteğe bağlı) LLM=ollama iken, varsayılan gemma3:4b
   OLLAMA_URL          (isteğe bağlı) varsayılan http://localhost:11434
   OLLAMA_KEEP_ALIVE   (isteğe bağlı) model turdan sonra ne kadar bellekte kalsın, varsayılan 1m
   MAX_POSTS_PER_RUN   (isteğe bağlı) bir turda en fazla paylaşım, varsayılan 4

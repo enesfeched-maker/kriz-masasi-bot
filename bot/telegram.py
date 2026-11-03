@@ -24,7 +24,7 @@ def format_post(post: Post, channel: str) -> str:
         prefix += "<b>SON DAKİKA:</b> "
 
     footer = f"\n\n{channel}" if channel else ""
-    body = html.escape(post.body, quote=False)
+    body = html.escape(post.body.lstrip("🔴⚠️🌍 "), quote=False)
 
     # Fotoğraflı mesajlarda Telegram en fazla 1024 karakter kabul eder.
     room = CAPTION_LIMIT - len(prefix) - len(footer)

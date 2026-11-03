@@ -2,8 +2,9 @@
 
 Dünyadaki krizleri (savaş, diplomasi, ekonomik şoklar, afetler) ve Türkiye iç siyasetini güvenilir kaynaklardan
 toplayıp Türkçe özetleyen ve [@krizmasasitr](https://t.me/krizmasasitr) Telegram kanalına
-gönderen bot. Özetleri bilgisayarında çalışan ücretsiz bir yapay zekâ modeli
-([Ollama](https://ollama.com)) yazar, hiçbir ücretli servis kullanılmaz.
+gönderen bot. Özetleri bilgisayarındaki [Claude Code](https://claude.com/claude-code) üzerinden Claude Haiku
+yazar (Claude aboneliğiyle çalışır, ayrı API anahtarı gerekmez). İstersen `.env` dosyasına
+`LLM=ollama` yazarak yerel [Ollama](https://ollama.com) modeline geçebilirsin.
 
 ## Nasıl çalışır
 

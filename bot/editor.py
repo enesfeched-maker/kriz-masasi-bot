@@ -1,8 +1,15 @@
-"""Yeni haberleri yerel modele (Ollama) verip kanala gidecek Türkçe paylaşımları yazdırır."""
+"""Yeni haberleri yapay zekâya verip kanala gidecek Türkçe paylaşımları yazdırır.
+
+Varsayılan olarak bilgisayardaki Claude Code üzerinden Claude Haiku kullanılır
+(claude -p, Claude aboneliğiyle çalışır, ayrı API anahtarı gerekmez).
+.env dosyasında LLM=ollama yazılırsa yerel Ollama modeli kullanılır."""
 
 import json
 import logging
 import os
+import shutil
+import subprocess
+import tempfile
 import time
 from dataclasses import dataclass
 
@@ -12,10 +19,21 @@ from bot.feeds import Item
 
 log = logging.getLogger(__name__)
 
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Ayarlar .env dosyası okunduktan sonra kullanılabilsin diye her çağrıda okunur.
 OLLAMA_URL = os.environ.get("OLLAMA_URL") or "http://localhost:11434"
-MODEL = os.environ.get("OLLAMA_MODEL") or "gemma3:4b"
 # Model tur bitince bu kadar süre sonra bellekten çıkar; turlar arasında bilgisayar rahatlar.
 KEEP_ALIVE = os.environ.get("OLLAMA_KEEP_ALIVE") or "1m"
+
+
+def backend() -> str:
+    return (os.environ.get("LLM") or "claude").strip().lower()
+
+
+def model_name() -> str:
+    if backend() == "ollama":
+        return os.environ.get("OLLAMA_MODEL") or "gemma3:4b"
+    return os.environ.get("CLAUDE_MODEL") or "haiku"
 
 SYSTEM = """Sen "Kriz Masası" adlı Türkçe Telegram haber kanalının editörüsün.
 Kanal dünyadaki krizleri takip eder: savaşlar ve çatışmalar, askeri gelişmeler,
@@ -43,7 +61,7 @@ Görevin:
      Kaynak metni kopyalama, kendi cümlelerinle yaz.
      Yalnızca kaynaklarda geçen bilgileri kullan, tahmin ekleme.
      Haber sitesinin ya da ajansın adını yazma.
-     Tarafsız dil kullan; ünlem, yorum yok.
+     Tarafsız dil kullan; ünlem, emoji, yorum yok.
    - category: savas, diplomasi, ekonomi, afet, turkiye (Türkiye iç siyaseti), diger seçeneklerinden biri.
    - breaking: dakikalar içinde yaşanan, büyük bir olaysa true.
    - item_ids: paylaşımın dayandığı haberlerin numaraları. Yalnızca tam olarak bu olayı
@@ -104,25 +122,58 @@ def build_prompt(items: list[Item]) -> str:
     return f"Yeni gelen haberler (JSON):\n{json.dumps(news, ensure_ascii=False)}"
 
 
+def _claude(payload: dict) -> dict:
+    """İsteği bilgisayardaki Claude Code'a (claude -p) gönderir, Ollama yanıtı biçiminde döner."""
+    exe = shutil.which("claude")
+    if not exe:
+        raise RuntimeError("claude komutu bulunamadı. Claude Code kurulu ve PATH'te mi?")
+    system = "\n\n".join(m["content"] for m in payload["messages"] if m["role"] == "system")
+    user = "\n\n".join(m["content"] for m in payload["messages"] if m["role"] == "user")
+    work = os.path.join(ROOT, "state", "claude")
+    os.makedirs(work, exist_ok=True)
+    with tempfile.NamedTemporaryFile("w", encoding="utf-8", suffix=".txt", delete=False, dir=work) as f:
+        f.write(system or "Kısa ve doğru cevap ver.")
+        system_file = f.name
+    try:
+        proc = subprocess.run(
+            [exe, "-p", "--model", model_name(), "--tools", "", "--strict-mcp-config",
+             "--system-prompt-file", system_file, "--output-format", "json",
+             "--json-schema", json.dumps(payload["format"]), "--no-session-persistence"],
+            input=user, capture_output=True, text=True, encoding="utf-8", timeout=600, cwd=work,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    finally:
+        os.remove(system_file)
+    try:
+        result = json.loads(proc.stdout)
+    except ValueError:
+        raise RuntimeError(f"Claude yanıtı okunamadı: {(proc.stderr or proc.stdout)[:300]}")
+    if result.get("is_error") or result.get("structured_output") is None:
+        raise RuntimeError(f"Claude hatası: {str(result.get('result'))[:300]}")
+    return {"message": {"content": json.dumps(result["structured_output"], ensure_ascii=False)}}
+
+
+def _ollama(payload: dict) -> dict:
+    resp = requests.post(f"{OLLAMA_URL}/api/chat",
+                         json={**payload, "model": model_name(), "keep_alive": KEEP_ALIVE}, timeout=900)
+    resp.raise_for_status()
+    return resp.json()
+
+
 def _chat(payload: dict) -> dict:
-    """Ollama'ya istek atar. Model ilk yüklenirken ya da Ollama yeni açılırken hata
-    verebildiği için birkaç kez dener."""
+    """Yapay zekâya istek atar. Geçici hatalarda birkaç kez dener."""
+    send = _ollama if backend() == "ollama" else _claude
     for attempt in range(3):
         try:
-            resp = requests.post(f"{OLLAMA_URL}/api/chat", json={**payload, "keep_alive": KEEP_ALIVE},
-                                 timeout=900)
-            resp.raise_for_status()
-            return resp.json()
-        except requests.RequestException as exc:
+            return send(payload)
+        except (requests.RequestException, RuntimeError, subprocess.TimeoutExpired) as exc:
             if attempt == 2:
-                raise RuntimeError(f"Ollama yanıt vermedi ({exc}). Ollama açık mı?") from exc
-            log.warning("Ollama hatası, 30 saniye sonra tekrar denenecek: %s", exc)
+                raise RuntimeError(f"Yapay zekâ yanıt vermedi ({exc})") from exc
+            log.warning("Yapay zekâ hatası, 30 saniye sonra tekrar denenecek: %s", exc)
             time.sleep(30)
 
 
 def write_posts(items: list[Item], max_posts: int) -> list[Post]:
     data = _chat({
-            "model": MODEL,
             "stream": False,
             "format": POST_SCHEMA,
             "options": {"temperature": 0.2, "num_ctx": 8192, "num_predict": 1500},
@@ -149,7 +200,7 @@ def write_posts(items: list[Item], max_posts: int) -> list[Post]:
             continue  # kaynağı olmayan paylaşım uydurma olabilir, gönderme
         posts.append(Post(p["headline"], p["body"], p.get("category", "diger"),
                           bool(p.get("breaking")), linked))
-    log.info("%s, %d haberden %d paylaşım yazdı", MODEL, len(items), len(posts))
+    log.info("%s, %d haberden %d paylaşım yazdı", model_name(), len(items), len(posts))
     return posts
 
 
@@ -171,7 +222,6 @@ def write_daily_summary(posts_today: list[dict]) -> list[str]:
     """Bugün paylaşılanlardan günün en önemli 5 olayını tek cümlelik maddeler halinde döner."""
     news = "\n".join(f"- {p['h']}: {p.get('b', '')}" for p in posts_today)
     data = _chat({
-        "model": MODEL,
         "stream": False,
         "format": SUMMARY_SCHEMA,
         "options": {"temperature": 0.2, "num_ctx": 8192},
@@ -201,7 +251,6 @@ def same_event(post: Post, item: Item) -> bool | None:
     olayı anlattığını modele ayrıca sorar. Kontrol yapılamazsa None döner."""
     try:
         data = _chat({
-            "model": MODEL,
             "stream": False,
             "format": MATCH_SCHEMA,
             "options": {"temperature": 0, "num_ctx": 2048},

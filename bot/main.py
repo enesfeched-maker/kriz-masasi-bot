@@ -212,7 +212,10 @@ def run_once() -> None:
         # Hiçbiri gitmediyse haberleri görüldü sayma, bir sonraki turda yeniden denensin.
         raise RuntimeError("Hiçbir paylaşım gönderilemedi. Kanal adını ve botun yönetici iznini kontrol et.")
 
-    for item in new_items:
+    # Yalnızca modele verilen haberler görüldü sayılır. Sınır dolduğu ya da tura sığmadığı için
+    # bakılamayan haberler sonraki turlarda yine denenir (6 saati geçince kendiliğinden düşer).
+    processed = new_items if first_run else (new_items_to_post if budget else [])
+    for item in processed:
         seen[item.id] = now
     state.update({"seen": seen, "recent": recent, "failed_sources": failed})
     if not dry_run:

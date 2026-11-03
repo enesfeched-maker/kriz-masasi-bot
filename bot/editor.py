@@ -122,9 +122,26 @@ def build_prompt(items: list[Item]) -> str:
     return f"Yeni gelen haberler (JSON):\n{json.dumps(news, ensure_ascii=False)}"
 
 
+def find_claude() -> str:
+    """claude komutunu bulur. Görev Zamanlayıcı'dan açılan botun PATH'i eksik olabildiği için
+    Claude Code'un bilinen kurulum klasörlerine de bakar."""
+    if path := os.environ.get("CLAUDE_PATH") or shutil.which("claude"):
+        return path
+    home = os.path.expanduser("~")
+    for candidate in [
+        os.path.join(home, ".local", "bin", "claude.exe"),
+        os.path.join(home, ".local", "bin", "claude"),
+        os.path.join(os.environ.get("APPDATA", ""), "npm", "claude.cmd"),
+        os.path.join(os.environ.get("LOCALAPPDATA", ""), "Programs", "claude", "claude.exe"),
+    ]:
+        if os.path.isfile(candidate):
+            return candidate
+    return ""
+
+
 def _claude(payload: dict) -> dict:
     """İsteği bilgisayardaki Claude Code'a (claude -p) gönderir, Ollama yanıtı biçiminde döner."""
-    exe = shutil.which("claude")
+    exe = find_claude()
     if not exe:
         raise RuntimeError("claude komutu bulunamadı. Claude Code kurulu ve PATH'te mi?")
     system = "\n\n".join(m["content"] for m in payload["messages"] if m["role"] == "system")
